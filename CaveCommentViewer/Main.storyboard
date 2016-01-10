@@ -1947,16 +1947,16 @@ http://opensource.org/licenses/mit-license.php</string>
                                                 <exclude reference="ESa-ed-mQw"/>
                                                 <exclude reference="NOc-cz-Zux"/>
                                                 <exclude reference="fyc-Nj-VqN"/>
-                                                <exclude reference="4Hn-lh-95s"/>
-                                                <exclude reference="DBK-lq-GMd"/>
-                                                <exclude reference="ExG-US-cgZ"/>
-                                                <exclude reference="QP1-M1-0Vy"/>
                                                 <exclude reference="dpO-2e-sdj"/>
                                                 <exclude reference="j6u-cb-q8a"/>
                                                 <exclude reference="lF4-WX-UOv"/>
                                                 <exclude reference="lYo-eN-JIm"/>
                                                 <exclude reference="qvV-b0-tFl"/>
                                                 <exclude reference="xgB-A7-XKg"/>
+                                                <exclude reference="4Hn-lh-95s"/>
+                                                <exclude reference="DBK-lq-GMd"/>
+                                                <exclude reference="ExG-US-cgZ"/>
+                                                <exclude reference="QP1-M1-0Vy"/>
                                                 <exclude reference="DEF-N9-hJu"/>
                                                 <exclude reference="EjG-BF-Xl5"/>
                                                 <exclude reference="NCc-MA-l3u"/>
@@ -2113,7 +2113,7 @@ http://opensource.org/licenses/mit-license.php</string>
                                             </label>
                                             <button opaque="NO" contentMode="scaleToFill" enabled="NO" contentHorizontalAlignment="center" contentVerticalAlignment="fill" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="kG4-Sq-P8S">
                                                 <rect key="frame" x="162" y="151" width="150" height="38"/>
-                                                <color key="backgroundColor" red="0.96509509048257369" green="0.76547445119949475" blue="0.34584814885638226" alpha="1" colorSpace="calibratedRGB"/>
+                                                <color key="backgroundColor" red="0.68248167215078392" green="0.69901938491945104" blue="0.72697092828418231" alpha="1" colorSpace="calibratedRGB"/>
                                                 <constraints>
                                                     <constraint firstAttribute="height" constant="38" id="xR1-Qs-JVz"/>
                                                 </constraints>

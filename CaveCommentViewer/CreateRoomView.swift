@@ -166,7 +166,6 @@ UITableViewDataSource,UITableViewDelegate,CreateRoomDetailViewDelegate,UIBarPosi
     
     //DetailDeglegate
     func selectRowAtIndex(Tag Tag: Int, Row: Int) {
-        print("Called")
         if Tag == 0{
             Genre_slot = Row
             if Row == 0{
