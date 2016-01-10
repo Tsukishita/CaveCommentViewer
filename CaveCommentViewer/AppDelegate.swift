@@ -40,7 +40,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         //初回起動時に各種初期化する
         if  ud.objectForKey("first_launch") == nil {
             ud.setObject(false, forKey: "first_launch")
-            api.InitData()
+            api.initData()
             print("初期化を行います")
         }
         

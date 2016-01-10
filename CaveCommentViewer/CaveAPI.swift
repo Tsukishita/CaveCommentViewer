@@ -124,7 +124,7 @@ class CaveAPI {
         return false
     }
     
-    func InitData(){
+    func initData(){
         self.accessKey = ""
         self.apiKey = ""
         self.auth_user = ""
