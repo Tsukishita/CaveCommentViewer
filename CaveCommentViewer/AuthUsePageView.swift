@@ -91,7 +91,7 @@ RSKImageCropViewControllerDataSource,CreateRoomViewDelegate,UIBarPositioningDele
             }
             
             self.StatusJson = JSON(data: data!)
-
+            
             dispatch_async(dispatch_get_main_queue()){() in
                 if  self.StatusJson["entries"][0]["status"] == "LIVE"{
                     self.StatusBtn.enabled = true
@@ -124,10 +124,8 @@ RSKImageCropViewControllerDataSource,CreateRoomViewDelegate,UIBarPositioningDele
             } else {
                 dispatch_async(dispatch_get_main_queue()) { () in
                     self.user_img.image = UIImage(data:data!)
-                    let longPressRecognizer = UILongPressGestureRecognizer(target: self, action: "imageLongTap:")
-                    longPressRecognizer.allowableMovement = 15
-                    longPressRecognizer.minimumPressDuration = 0.3
-                    self.user_img.addGestureRecognizer(longPressRecognizer)
+                    let ImageTapRecognizer = UITapGestureRecognizer(target: self, action: "imageTap:")
+                    self.user_img.addGestureRecognizer(ImageTapRecognizer)
                     
                 }
             }
@@ -241,23 +239,21 @@ RSKImageCropViewControllerDataSource,CreateRoomViewDelegate,UIBarPositioningDele
                     return
                 }
                 
-                let longPressRecognizer = UILongPressGestureRecognizer(target: self, action: "imageLongTap:")
-                longPressRecognizer.allowableMovement = 15
-                longPressRecognizer.minimumPressDuration = 0.3
+                let ImageTapRecognizer = UITapGestureRecognizer(target: self, action: "imageTap:")
                 
                 switch slot!{
                 case 1:
                     self.thumbs_1.image = UIImage(data:data!)
                     self.thumbs_1.userInteractionEnabled = true
-                    self.thumbs_1.addGestureRecognizer(longPressRecognizer)
+                    self.thumbs_1.addGestureRecognizer(ImageTapRecognizer)
                 case 2:
                     self.thumbs_2.image = UIImage(data:data!)
                     self.thumbs_2.userInteractionEnabled = true
-                    self.thumbs_2.addGestureRecognizer(longPressRecognizer)
+                    self.thumbs_2.addGestureRecognizer(ImageTapRecognizer)
                 case 3:
                     self.thumbs_3.image = UIImage(data:data!)
                     self.thumbs_3.userInteractionEnabled = true
-                    self.thumbs_3.addGestureRecognizer(longPressRecognizer)
+                    self.thumbs_3.addGestureRecognizer(ImageTapRecognizer)
                 default: break
                 }
                 
@@ -266,70 +262,67 @@ RSKImageCropViewControllerDataSource,CreateRoomViewDelegate,UIBarPositioningDele
         task.resume()
     }
     
-    func imageLongTap(sender : UILongPressGestureRecognizer){
-        if sender.state == UIGestureRecognizerState.Began {
-            var title:String!
-            
-            if sender.view?.tag == 4{
-                title = "プロフィールイメージ"
-                imageSetKey = "prof"
-            }else{
-                title = "サムネイル \(sender.view!.tag)"
-                imageSetKey = "thumb_\(sender.view!.tag)"
-            }
-            
-            let alertController:UIAlertController = UIAlertController(title: title, message: "", preferredStyle: .ActionSheet)
-            let delImage = UIAlertAction(title: "削除", style: .Destructive) {
-                action in
-                
-                if sender.view!.tag == 4{
-                    title = "プロフィール画像の削除"
-                }else{
-                    title = "サムネイル\(sender.view!.tag)の削除"
-                }
-                let DelAlert = UIAlertController(title: title, message: "本当に削除してもよろしいですか？", preferredStyle: .Alert)
-                let delImage = UIAlertAction(title: "削除", style: .Destructive) {
-                    action in
-                    if sender.view!.tag == 4{
-                        self.Api.deleteImage(session:self._session, slot: nil, res: {res, data in
-                            dispatch_async(dispatch_get_main_queue()){ ()in
-                                status.animation(str: data)
-                            }
-                            self.getThumbs(url: "http://gae.cavelis.net/img/no_profile_image.png", slot: nil)
-                            
-                        })
-                    }else{
-                        self.Api.deleteImage(session:self._session, slot: sender.view!.tag, res: {res, data in
-                            dispatch_async(dispatch_get_main_queue()){ ()in
-                                status.animation(str: data)
-                            }
-                            self.getThumbs(url: "http://gae.cavelis.net/img/no_thumbnail_image.png", slot: sender.view!.tag)
-                            
-                        })
-                    }
-                    
-                }
-                let cancel = UIAlertAction(title: "キャンセル", style: .Cancel) {action in}
-                DelAlert.addAction(delImage)
-                DelAlert.addAction(cancel)
-                self.presentViewController(DelAlert, animated: true, completion: nil)
-            }
-            let setImage = UIAlertAction(title: "画像を設定する", style: .Default) {
-                action in
-                self.imagePros = true
-                self.pickImageFromLibrary()
-            }
-            let cancel = UIAlertAction(title: "キャンセル", style: .Cancel) {action in}
-            
-            //スロット１以外に削除項目を追加
-            if sender.view!.tag != 1{
-                alertController.addAction(delImage)
-            }
-            alertController.addAction(setImage)
-            alertController.addAction(cancel)
-            presentViewController(alertController, animated: true, completion: nil)
+    func imageTap(sender : UITapGestureRecognizer){
+        var title:String!
+        
+        if sender.view?.tag == 4{
+            title = "プロフィールイメージ"
+            imageSetKey = "prof"
+        }else{
+            title = "サムネイル \(sender.view!.tag)"
+            imageSetKey = "thumb_\(sender.view!.tag)"
         }
         
+        let alertController:UIAlertController = UIAlertController(title: title, message: "", preferredStyle: .ActionSheet)
+        let delImage = UIAlertAction(title: "削除", style: .Destructive) {
+            action in
+            
+            if sender.view!.tag == 4{
+                title = "プロフィール画像の削除"
+            }else{
+                title = "サムネイル\(sender.view!.tag)の削除"
+            }
+            let DelAlert = UIAlertController(title: title, message: "本当に削除してもよろしいですか？", preferredStyle: .Alert)
+            let delImage = UIAlertAction(title: "削除", style: .Destructive) {
+                action in
+                if sender.view!.tag == 4{
+                    self.Api.deleteImage(session:self._session, slot: nil, res: {res, data in
+                        dispatch_async(dispatch_get_main_queue()){ ()in
+                            status.animation(str: data)
+                        }
+                        self.getThumbs(url: "http://gae.cavelis.net/img/no_profile_image.png", slot: nil)
+                        
+                    })
+                }else{
+                    self.Api.deleteImage(session:self._session, slot: sender.view!.tag, res: {res, data in
+                        dispatch_async(dispatch_get_main_queue()){ ()in
+                            status.animation(str: data)
+                        }
+                        self.getThumbs(url: "http://gae.cavelis.net/img/no_thumbnail_image.png", slot: sender.view!.tag)
+                        
+                    })
+                }
+                
+            }
+            let cancel = UIAlertAction(title: "キャンセル", style: .Cancel) {action in}
+            DelAlert.addAction(delImage)
+            DelAlert.addAction(cancel)
+            self.presentViewController(DelAlert, animated: true, completion: nil)
+        }
+        let setImage = UIAlertAction(title: "画像を設定する", style: .Default) {
+            action in
+            self.imagePros = true
+            self.pickImageFromLibrary()
+        }
+        let cancel = UIAlertAction(title: "キャンセル", style: .Cancel) {action in}
+        
+        //スロット１以外に削除項目を追加
+        if sender.view!.tag != 1{
+            alertController.addAction(delImage)
+        }
+        alertController.addAction(setImage)
+        alertController.addAction(cancel)
+        presentViewController(alertController, animated: true, completion: nil)
     }
     
     override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
