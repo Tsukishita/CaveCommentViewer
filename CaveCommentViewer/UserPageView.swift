@@ -61,25 +61,27 @@ class UserPageView:UIViewController,UINavigationControllerDelegate {
     override func viewWillAppear(animated: Bool) {
         super.viewWillAppear(animated)
         
+        
         if Name == Api.auth_user{
             StatusBtn.enabled = false
-            return
+        }else{
+            if Api.searchUser(name: self.Name){
+                self.StatusBtn.setTitle("フォロー中", forState: .Normal)
+                self.StatusBtn.backgroundColor = UIColor(red: 1, green: 150/255, blue: 50/255, alpha: 1)
+                
+            }else {
+                self.StatusBtn.setTitle("フォローする", forState: .Normal)
+                self.StatusBtn.backgroundColor = UIColor(red: 60/255, green: 171/255, blue: 1, alpha: 1)
+            }
         }
         
-        if Api.searchUser(name: self.Name){
-            self.StatusBtn.setTitle("フォロー中", forState: .Normal)
-            self.StatusBtn.backgroundColor = UIColor(red: 1, green: 150/255, blue: 50/255, alpha: 1)
-            
-        }else {
-            self.StatusBtn.setTitle("フォローする", forState: .Normal)
-            self.StatusBtn.backgroundColor = UIColor(red: 60/255, green: 171/255, blue: 1, alpha: 1)
-        }
     }
     
     func getProfSource(){
         let profUrl = "http://gae.cavelis.net/user/\(Name)"
         let url:NSURL! = NSURL(string:profUrl.stringByAddingPercentEncodingWithAllowedCharacters(NSCharacterSet.URLQueryAllowedCharacterSet())!)
         let request = NSMutableURLRequest(URL: url)
+        request.allHTTPHeaderFields = nil
         let task : NSURLSessionDataTask = NSURLSession.sharedSession().dataTaskWithRequest(request) { (data, response, error) -> Void in
             if error != nil {
                 errorStatus.offlineError(error: error!)
@@ -93,7 +95,12 @@ class UserPageView:UIViewController,UINavigationControllerDelegate {
     
     func profParse(data data:NSData){
         let HtmlStr = HTML(html: data, encoding: NSUTF8StringEncoding)!
-        let node = HtmlStr.css("section#profile_area div article").innerHTML!
+        var node = HtmlStr.css("section#profile_area div article").innerHTML
+        
+        if node == nil{
+            node = HtmlStr.css("section#profile_description_area form#profile_description_edit_form textarea").innerHTML
+        }
+        
         
         //HTMLのエスケープ時間かかるので別スレッドで行う
         let qualityOfServiceClass = DISPATCH_QUEUE_PRIORITY_DEFAULT
@@ -104,7 +111,7 @@ class UserPageView:UIViewController,UINavigationControllerDelegate {
                 NSCharacterEncodingDocumentAttribute: NSUTF8StringEncoding
             ]
             
-            let encodedData:NSData = node.dataUsingEncoding(NSUTF8StringEncoding)!
+            let encodedData:NSData = node!.dataUsingEncoding(NSUTF8StringEncoding)!
             let attributedString = try! NSAttributedString(data: encodedData, options: attributedOptions, documentAttributes: nil)
             
             dispatch_async(dispatch_get_main_queue(), {
@@ -116,7 +123,6 @@ class UserPageView:UIViewController,UINavigationControllerDelegate {
     
     
     func imageLongTap(sender : UILongPressGestureRecognizer){
-        print("called")
         if sender.state == UIGestureRecognizerState.Began {
             let alertController = UIAlertController(title: "", message: self.Name, preferredStyle: .ActionSheet)
             let saveImage = UIAlertAction(title: "画像を保存", style: .Default) {
