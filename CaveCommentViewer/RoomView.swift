@@ -64,6 +64,12 @@ class RoomView: UIViewController{
         lb_comment.text = "\(entry_comment!)"
         lb_tag.text = entry_tag
         
+        //ユーザーページ用タップレコナイザー
+        let NameTapRecognizer = UITapGestureRecognizer(target: self, action: "authTap:")
+        let ImageTapRecognizer = UITapGestureRecognizer(target: self, action: "authTap:")
+        self.lb_author.addGestureRecognizer(NameTapRecognizer)
+        self.author_image.addGestureRecognizer(ImageTapRecognizer)
+        
         //HTMLのエスケープ時間かかるので別スレッドで行う
         let qualityOfServiceClass = DISPATCH_QUEUE_PRIORITY_DEFAULT
         let backgroundQueue = dispatch_get_global_queue(qualityOfServiceClass, 0)
@@ -96,7 +102,7 @@ class RoomView: UIViewController{
             self.img.layer.shadowOpacity = 0.1
             self.img.layer.shadowOffset = CGSizeMake(0, 0);
         }else{
-             self.img.image = nil
+            self.img.image = nil
         }
         
         //AuthorImage
@@ -124,10 +130,12 @@ class RoomView: UIViewController{
         
     }
     
-
-    
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
+    }
+    
+    func authTap(sender:UITapGestureRecognizer){
+        self.performSegueWithIdentifier("toUserPage",sender:nil)
     }
     
     func ImageLongTap(sender : UILongPressGestureRecognizer){
@@ -184,6 +192,10 @@ class RoomView: UIViewController{
             Commentview.room_startTime = entry_date
             Commentview.live_status = live_status
             Commentview.room_author = entry_author
+        }else if segue.identifier == "toUserPage" {
+            let UserPage:UserPageView = segue.destinationViewController as! UserPageView
+            UserPage.Image = author_image.image
+            UserPage.Name = entry_author
         }
     }
     
