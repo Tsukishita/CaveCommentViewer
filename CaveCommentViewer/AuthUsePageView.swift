@@ -73,9 +73,6 @@ RSKImageCropViewControllerDataSource,CreateRoomViewDelegate,UIBarPositioningDele
     override func viewWillAppear(animated: Bool) {
         super.viewWillAppear(animated)
         
-        self.StatusBtn.setTitle("取得中", forState: .Normal)
-        self.StatusBtn.backgroundColor = UIColor(red:0, green: 0, blue: 0, alpha: 0.5)
-        
         //BroadCastStatus
         let StatusURL:NSURL = NSURL(string:
             "http://gae.cavelis.net/user_entry/\(Api.auth_user)".stringByAddingPercentEncodingWithAllowedCharacters(
@@ -161,7 +158,6 @@ RSKImageCropViewControllerDataSource,CreateRoomViewDelegate,UIBarPositioningDele
     }
     
     @IBAction func toCommentView(sender: AnyObject) {
-        print(StatusBtn.enabled)
         let Commentview = self.storyboard?.instantiateViewControllerWithIdentifier("CommentView") as! CommentView
         let unixInt:Double = StatusJson["entries"][0]["start_date"].doubleValue/1000
         Commentview.roomid = StatusJson["entries"][0]["stream_name"].string!

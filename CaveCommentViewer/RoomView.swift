@@ -62,7 +62,14 @@ class RoomView: UIViewController{
         lb_date.text = date_formatter.stringFromDate(entry_date!)
         lb_listener.text = "\(entry_listener!)"
         lb_comment.text = "\(entry_comment!)"
-        lb_tag.text = entry_tag
+        
+        if entry_tag == nil{
+            lb_tag.text = "タグ無し"
+            lb_tag.textColor = .grayColor()
+        }else{
+            lb_tag.text = entry_tag!
+        }
+        
         
         //ユーザーページ用タップレコナイザー
         let NameTapRecognizer = UITapGestureRecognizer(target: self, action: "authTap:")
@@ -79,10 +86,20 @@ class RoomView: UIViewController{
                 NSCharacterEncodingDocumentAttribute: NSUTF8StringEncoding
             ]
             
+            var attributedString:NSAttributedString!
             let encodedData:NSData = self.entry_content!.dataUsingEncoding(NSUTF8StringEncoding)!
-            var attributedString = try! NSAttributedString(data: encodedData, options: attributedOptions, documentAttributes: nil)
-            let decodedString:NSData  = attributedString.string.dataUsingEncoding(NSUTF8StringEncoding)!
-            attributedString = try! NSAttributedString(data: decodedString, options: attributedOptions, documentAttributes: nil)
+
+            if encodedData.length == 0{
+                let data:NSData = "コメントはありません".dataUsingEncoding(NSUTF8StringEncoding)!
+                attributedString = try! NSAttributedString(data: data, options: attributedOptions, documentAttributes: nil)
+            }else{
+                attributedString = try! NSAttributedString(data: encodedData, options: attributedOptions, documentAttributes: nil)
+                
+                let decodedString:NSData  = attributedString.string.dataUsingEncoding(NSUTF8StringEncoding)!
+                attributedString = try! NSAttributedString(data: decodedString, options: attributedOptions, documentAttributes: nil)
+            }
+
+            
             
             dispatch_async(dispatch_get_main_queue(), {
                 self.textView.attributedText = attributedString
