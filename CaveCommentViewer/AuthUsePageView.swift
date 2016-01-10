@@ -5,6 +5,7 @@
 //  Created by 月下 on 2015/12/20.
 //  Copyright © 2015年 月下. All rights reserved.
 //
+import Foundation
 import UIKit
 import Kanna
 import SwiftyJSON
@@ -21,18 +22,20 @@ RSKImageCropViewControllerDataSource,CreateRoomViewDelegate,UIBarPositioningDele
     @IBOutlet weak var thumbs_3: UIImageView!
     @IBOutlet weak var user_name: UILabel!
     @IBOutlet weak var newRoomBt: UIBarButtonItem!
+    @IBOutlet weak var StatusBtn: UIButton!
     
     var thumbs_1_url:String!
     var thumbs_2_url:String!
     var thumbs_3_url:String!
     
-
+    
     let Api = CaveAPI()
     var Socket: SocketIOClient!
     
     var imageSetKey:String = ""
     var imagePros:Bool = false
     var _session:String = ""
+    var StatusJson:JSON!
     var Overlay:UIView!
     
     override func viewDidLoad() {
@@ -57,6 +60,7 @@ RSKImageCropViewControllerDataSource,CreateRoomViewDelegate,UIBarPositioningDele
         
         getProfSource()
     }
+    
     override func viewDidDisappear(animated: Bool) {
         super.viewDidDisappear(animated)
         if Socket != nil {
@@ -65,11 +69,52 @@ RSKImageCropViewControllerDataSource,CreateRoomViewDelegate,UIBarPositioningDele
             self.Socket = nil
         }
     }
+    
+    override func viewWillAppear(animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        self.StatusBtn.setTitle("取得中", forState: .Normal)
+        self.StatusBtn.backgroundColor = UIColor(red:0, green: 0, blue: 0, alpha: 0.5)
+        
+        //BroadCastStatus
+        let StatusURL:NSURL = NSURL(string:
+            "http://gae.cavelis.net/user_entry/\(Api.auth_user)".stringByAddingPercentEncodingWithAllowedCharacters(
+                NSCharacterSet.URLQueryAllowedCharacterSet()
+                )!
+            )!
+        let StatusRequest = NSMutableURLRequest(URL: StatusURL)
+        
+        let StatusTask: NSURLSessionDataTask = NSURLSession.sharedSession().dataTaskWithRequest(StatusRequest) { (data, response, error) -> Void in
+            if error != nil {
+                print(error!.description)
+                return
+            }
+            
+            self.StatusJson = JSON(data: data!)
+
+            dispatch_async(dispatch_get_main_queue()){() in
+                if  self.StatusJson["entries"][0]["status"] == "LIVE"{
+                    self.StatusBtn.enabled = true
+                    self.StatusBtn.setTitle("放送中", forState: .Normal)
+                    self.StatusBtn.backgroundColor = UIColor(red: 1, green: 150/255, blue: 50/255, alpha: 1)
+                    
+                }else if self.StatusJson["entries"][0]["status"] == "ARCHIVE"{
+                    self.StatusBtn.enabled = false
+                    self.StatusBtn.setTitle("放送停止中", forState: .Normal)
+                    self.StatusBtn.backgroundColor = UIColor(red: 60/255, green: 171/255, blue: 1, alpha: 1)
+                    
+                }
+            }
+        }
+        StatusTask.resume()
+        
+    }
     func positionForBar(bar: UIBarPositioning) -> UIBarPosition {
         return UIBarPosition.TopAttached
     }
     
     func getProfSource(){
+        //UserImage
         let profImg_URL = "http://img.cavelis.net/userimage/l/\(Api.auth_user).png"
         let profurl:NSURL = NSURL(string: profImg_URL.stringByAddingPercentEncodingWithAllowedCharacters(NSCharacterSet.URLQueryAllowedCharacterSet())!)!
         let profrequest = NSMutableURLRequest(URL: profurl,cachePolicy: NSURLRequestCachePolicy.ReloadIgnoringLocalCacheData,timeoutInterval: 5)
@@ -88,9 +133,9 @@ RSKImageCropViewControllerDataSource,CreateRoomViewDelegate,UIBarPositioningDele
             }
             
         }
-        
         profTask.resume()
         
+        //ThumbImage
         let profUrl = "http://gae.cavelis.net/user/\(Api.auth_user)"
         let url:NSURL! = NSURL(string:profUrl.stringByAddingPercentEncodingWithAllowedCharacters(NSCharacterSet.URLQueryAllowedCharacterSet())!)
         let request = NSMutableURLRequest(URL: url)
@@ -114,6 +159,22 @@ RSKImageCropViewControllerDataSource,CreateRoomViewDelegate,UIBarPositioningDele
             }
         }
         task.resume()
+        
+    }
+    
+    @IBAction func toCommentView(sender: AnyObject) {
+        print(StatusBtn.enabled)
+        let Commentview = self.storyboard?.instantiateViewControllerWithIdentifier("CommentView") as! CommentView
+        let unixInt:Double = StatusJson["entries"][0]["start_date"].doubleValue/1000
+        Commentview.roomid = StatusJson["entries"][0]["stream_name"].string!
+        Commentview.room_name = StatusJson["entries"][0]["title"].string!
+        Commentview.live_status = true
+        Commentview.room_startTime = NSDate(timeIntervalSince1970: unixInt)
+        Commentview.room_author = Api.auth_user
+        Commentview.modalPresentationStyle = .OverCurrentContext
+        dispatch_async(dispatch_get_main_queue(), { () -> Void in
+            self.presentViewController(Commentview, animated: true, completion: {})
+        })
     }
     
     func profParse(data data:NSData){
@@ -134,7 +195,7 @@ RSKImageCropViewControllerDataSource,CreateRoomViewDelegate,UIBarPositioningDele
             
             return
         }
-
+        
         
         //セッションValueを一時保存
         NodeStr = HtmlStr.css("script#icon_upload_template").text! as NSString

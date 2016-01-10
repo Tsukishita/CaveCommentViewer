@@ -345,7 +345,7 @@ UITableViewDataSource,NSXMLParserDelegate{
                         Commentview.live_status = true
                         Commentview.room_startTime = NSDate(timeIntervalSince1970: unixInt)
                         Commentview.room_author = textFields.text!
-                        Commentview.modalPresentationStyle = .FullScreen
+                        Commentview.modalPresentationStyle = .OverCurrentContext
                         dispatch_async(dispatch_get_main_queue(), { () -> Void in
                             self.presentViewController(Commentview, animated: true, completion: {})
                         })
