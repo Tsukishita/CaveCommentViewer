@@ -79,17 +79,59 @@ class CaveAPI {
         }
     }
     
+    private(set) var favUser:[String]{
+        get{
+            return self.ud.arrayForKey("favUser") as! [String]
+        }
+        set(favUser){
+            self.ud.setObject(favUser, forKey: "favUser")
+            self.ud.synchronize()
+        }
+    }
+    
+    internal func searchUser(name name:String) -> Bool{
+        let users = self.favUser
+        
+        if users.indexOf(name) != nil {
+            return true
+        }else{
+                return false
+        }
+    }
+    
+    internal func addUser(name name:String) -> Void{
+        var users = self.favUser
+        
+        if users.indexOf(name) == nil {
+            users.append(name)
+            self.favUser = users
+        }
+
+        return
+    }
+    
+    internal func deleteUser(name name:String) -> Bool{
+        var users = self.favUser
+        let index = users.indexOf(name)
+        
+        if index != nil {
+            users.removeAtIndex(index!)
+            self.favUser = users
+            
+            return true
+        }
+        
+        return false
+    }
+    
     func InitData(){
         self.accessKey = ""
         self.apiKey = ""
         self.auth_user = ""
         self.auth_pass = ""
         self.cookieKey = nil
+        self.favUser = []
     }
-    
-    //    init(){print("APIinit")}
-    //
-    //    deinit{print("APIdeinit")}
     
     internal func Login(user user:String,pass:String,regist:(Bool)->Void){
         let str = "user_name=\(user)&password=\(pass)"
@@ -249,7 +291,7 @@ class CaveAPI {
         task.resume()
     }
     
-    func deleteImage(session session:String,slot:Int?,res:(Bool,String) -> Void){
+    internal func deleteImage(session session:String,slot:Int?,res:(Bool,String) -> Void){
         UIApplication.sharedApplication().networkActivityIndicatorVisible = true
         
         let url:NSURL! = NSURL(string:"http://gae.cavelis.net/useredit/deleteuserimage")
