@@ -1,0 +1,22 @@
+PODS:
+  - Kanna (1.0.3)
+  - KeychainAccess (2.3.3)
+  - RSKImageCropper (1.4.1)
+  - Socket.IO-Client-Swift (4.1.6)
+  - SwiftyJSON (2.3.2)
+
+DEPENDENCIES:
+  - Kanna
+  - KeychainAccess
+  - RSKImageCropper
+  - Socket.IO-Client-Swift
+  - SwiftyJSON
+
+SPEC CHECKSUMS:
+  Kanna: 10c7f20762846e808ec5716e4191427bd71bf1c2
+  KeychainAccess: 9b7e49e48277e329b1b3195e54697ed313d30acf
+  RSKImageCropper: 98ae426eb4eb11b733ff87f8e2542a480f4fa8e6
+  Socket.IO-Client-Swift: 5e8aa2961d1f32e5c0e104c00c9f192133a92d11
+  SwiftyJSON: 04ccea08915aa0109039157c7974cf0298da292a
+
+COCOAPODS: 0.38.2
