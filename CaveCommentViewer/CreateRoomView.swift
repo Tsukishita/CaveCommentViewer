@@ -22,12 +22,16 @@ UITableViewDataSource,UITableViewDelegate,CreateRoomDetailViewDelegate,UIBarPosi
     @IBOutlet weak var titleText: UITextField!
     @IBOutlet weak var detailText: UITextView!
     @IBOutlet weak var tagText: UITextField!
+    
     @IBOutlet weak var ComIDSw: UISwitch!
     @IBOutlet weak var AuthSw: UISwitch!
     @IBOutlet weak var NameSw: UISwitch!
     @IBOutlet weak var TestModeSw: UISwitch!
+    
     @IBOutlet weak var genreTable: UITableView!
     @IBOutlet weak var thubmTable: UITableView!
+    @IBOutlet weak var PresetTable: UITableView!
+    
     @IBOutlet weak var scrollview: UIScrollView!
     
     let Api = CaveAPI()
@@ -43,6 +47,7 @@ UITableViewDataSource,UITableViewDelegate,CreateRoomDetailViewDelegate,UIBarPosi
     var Name:Bool  = false
     var Anony:Bool = false
     var TestMode:Bool = false
+    var txtActiveField = UITextField()
     
     let genre:[String]=["配信ジャンルを選択","FPS",
         "MMO","MOBA",
@@ -76,6 +81,9 @@ UITableViewDataSource,UITableViewDelegate,CreateRoomDetailViewDelegate,UIBarPosi
         AuthSw.addTarget(self, action: "onClickMySwicth:", forControlEvents: UIControlEvents.ValueChanged)
         NameSw.addTarget(self, action: "onClickMySwicth:", forControlEvents: UIControlEvents.ValueChanged)
         TestModeSw.addTarget(self, action: "onClickMySwicth:", forControlEvents: UIControlEvents.ValueChanged)
+        
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: Selector("keyboardWillShow:"), name:UIKeyboardWillShowNotification, object: nil);
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: Selector("keyboardWillHide:"), name:UIKeyboardWillHideNotification, object: nil);
         
         let str = "http://gae.cavelis.net/user/\(self.Api.auth_user)"
         let url:NSURL! = NSURL(
@@ -120,6 +128,28 @@ UITableViewDataSource,UITableViewDelegate,CreateRoomDetailViewDelegate,UIBarPosi
         }
     }
     
+    //UITextFieldが編集された直後に呼ばれる.
+    func textFieldShouldBeginEditing(textField: UITextField) -> Bool {
+        txtActiveField = textField
+        return true
+    }
+    
+    func keyboardWillShow(notification: NSNotification){
+        let userInfo = notification.userInfo!
+        let keyboardScreenEndFrame = (userInfo[UIKeyboardFrameEndUserInfoKey] as! NSValue).CGRectValue()
+        let myBoundSize: CGSize = UIScreen.mainScreen().bounds.size
+        let txtLimit = txtActiveField.frame.origin.y + txtActiveField.frame.height + 72
+        let kbdLimit = myBoundSize.height - keyboardScreenEndFrame.size.height
+        
+        if txtLimit >= kbdLimit {
+            scrollview.contentOffset.y = txtLimit - kbdLimit
+        }
+    }
+    
+    func keyboardWillHide(notification: NSNotification){
+        self.scrollview.contentOffset.y = 0
+    }
+    
     //UITableDelegate
     func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
         switch tableView.tag{
@@ -135,8 +165,11 @@ UITableViewDataSource,UITableViewDelegate,CreateRoomDetailViewDelegate,UIBarPosi
             cell.thumbLabel.text = "サムネイル\(Thumb_list[Thumb_slot] + 1)"
             cell.thumbnail!.image = self.ThumbImage[Thumb_list[Thumb_slot]]
             return cell
+        case 2:
+            let cell: UITableViewCell = UITableViewCell(style: UITableViewCellStyle.Subtitle, reuseIdentifier: "Cell")
+            cell.textLabel!.text = "新規(デフォルト)"
+            return cell
         default:
-            
             let cell: UITableViewCell = UITableViewCell(style: UITableViewCellStyle.Subtitle, reuseIdentifier: "Cell")
             return cell
         }
