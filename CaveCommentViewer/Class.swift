@@ -24,16 +24,7 @@ class Entry {
     var listener:String!
     var comment_num:String!
 }
-class MyScrollView: UIScrollView {
-    
-    override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
-        superview?.touchesBegan(touches, withEvent: event)
-    }
-    override func touchesEnded(touches: Set<UITouch>, withEvent event: UIEvent?) {
-        superview?.touchesEnded(touches, withEvent: event)
-    }
-    
-}
+
 class status{
     class func animation(str str:String) {
         let displayWidth: CGFloat = UIScreen.mainScreen().bounds.size.width
