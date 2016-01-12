@@ -98,7 +98,6 @@ class UserPageView:UIViewController,UINavigationControllerDelegate {
             })
             
         }
-        print(Api.favUser)
     }
     
     func getProfSource(){
