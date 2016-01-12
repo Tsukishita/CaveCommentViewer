@@ -8,13 +8,67 @@
 /*
 以降すべてAPI関連はこのAPIを通して行うようにする
 */
-import Foundation
 import SwiftyJSON
 import KeychainAccess
+
+class Preset:NSObject, NSCoding {
+    var PresetName:String!
+    var Title:String!
+    var Comment:String!
+    var Gunre:Int!
+    var Tag:String!
+    var ThumbsSlot:Int!
+    var ShowId:Bool!
+    var AnonyCom:Bool!
+    var AuthCom:Bool!
+    
+    override init() {}
+    
+    // MARK: - Implements NSCoding protocol
+    func encodeWithCoder(aCoder: NSCoder) {
+        aCoder.encodeInteger(self.Gunre, forKey: "GUNRE")
+        aCoder.encodeInteger(self.ThumbsSlot, forKey: "THUMBSSLOT")
+        
+        aCoder.encodeObject(self.PresetName, forKey: "PRESETNAME")
+        aCoder.encodeObject(self.Title, forKey: "TITLE")
+        aCoder.encodeObject(self.Comment, forKey: "COMMENT")
+        aCoder.encodeObject(self.Tag, forKey: "TAG")
+        
+        aCoder.encodeBool(self.ShowId, forKey: "SHOWID")
+        aCoder.encodeBool(self.AnonyCom, forKey: "ANONYCOM")
+        aCoder.encodeBool(self.AuthCom, forKey: "AUTHCOM")
+        
+    }
+    
+    required init?(coder aDecoder: NSCoder) {
+        self.Gunre = aDecoder.decodeIntegerForKey("GUNRE")
+        self.ThumbsSlot = aDecoder.decodeIntegerForKey("THUMBSSLOT")
+        
+        self.PresetName = aDecoder.decodeObjectForKey("PRESETNAME") as! String
+        self.Title = aDecoder.decodeObjectForKey("TITLE") as! String
+        self.Comment = aDecoder.decodeObjectForKey("COMMENT") as! String
+        self.Tag = aDecoder.decodeObjectForKey("TAG") as! String
+        
+        self.ShowId = aDecoder.decodeBoolForKey("SHOWID")
+        self.AnonyCom = aDecoder.decodeBoolForKey("ANONYCOM")
+        self.AuthCom = aDecoder.decodeBoolForKey("AUTHCOM")
+        
+    }
+}
 
 class CaveAPI {
     private let ud = NSUserDefaults.standardUserDefaults()
     private let keychain = Keychain(service: "net.cavelis.gae")
+    
+    func initData(){
+        self.accessKey = ""
+        self.apiKey = ""
+        self.auth_user = ""
+        self.auth_pass = ""
+        self.cookieKey = nil
+        self.favUser = []
+        self.presets = []
+    }
     
     var devKey: String {
         get {
@@ -79,6 +133,8 @@ class CaveAPI {
         }
     }
     
+    
+    //FavUser
     private(set) var favUser:[String]{
         get{
             return self.ud.arrayForKey("favUser") as! [String]
@@ -95,7 +151,7 @@ class CaveAPI {
         if users.indexOf(name) != nil {
             return true
         }else{
-                return false
+            return false
         }
     }
     
@@ -105,12 +161,13 @@ class CaveAPI {
         if users.indexOf(name) == nil {
             users.append(name)
             self.favUser = users
+            return
         }
-
+        
         return
     }
     
-    internal func deleteUser(name name:String) -> Bool{
+    internal func deleteUser(name name:String) -> Void{
         var users = self.favUser
         let index = users.indexOf(name)
         
@@ -118,20 +175,57 @@ class CaveAPI {
             users.removeAtIndex(index!)
             self.favUser = users
             
-            return true
+            return
         }
         
+        return
+    }
+    
+    
+    //Presets
+    private(set) var presets:[Preset]{
+        get{
+            let data = self.ud.objectForKey("Presets") as! NSData
+            return  NSKeyedUnarchiver.unarchiveObjectWithData(data) as! [Preset]
+        }
+        set(presets){
+            let data = NSKeyedArchiver.archivedDataWithRootObject(presets)
+            self.ud.setObject(data, forKey: "Presets")
+            self.ud.synchronize()
+        }
+    }
+    
+    internal func presetNames() -> [String]{
+        var strArray:[String] = []
+        
+        for preset in self.presets{
+           strArray.append(preset.PresetName)
+        }
+        
+        return strArray
+    }
+    
+    internal func loadPreset(presetName presetName:String) -> Preset{
+        for preset in self.presets{
+            print(preset.PresetName)
+        }
+        return self.presets[0]
+    }
+    
+    internal func savePreset(preset preset:Preset) -> Bool{
+        var data = self.ud.objectForKey("Presets") as! NSData
+        var pre = NSKeyedUnarchiver.unarchiveObjectWithData(data) as! [Preset]
+        
+        pre.append(preset)
+        print(pre)
+        
+        data = NSKeyedArchiver.archivedDataWithRootObject(pre)
+        
+        self.ud.setObject(data, forKey: "Presets")
+        self.ud.synchronize()
         return false
     }
     
-    func initData(){
-        self.accessKey = ""
-        self.apiKey = ""
-        self.auth_user = ""
-        self.auth_pass = ""
-        self.cookieKey = nil
-        self.favUser = []
-    }
     
     internal func Login(user user:String,pass:String,regist:(Bool)->Void){
         let str = "user_name=\(user)&password=\(pass)"
@@ -403,4 +497,5 @@ class CaveAPI {
         task.resume()
         
     }
+    
 }
