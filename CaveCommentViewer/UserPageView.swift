@@ -6,20 +6,6 @@
 //  Copyright © 2015年 月下. All rights reserved.
 //
 
-/*
-お気に入りユーザーの仕様
-お気に入りに入れられたユーザーは配列で保存
-お気に入りページに移動した際に各ユーザーのStatusを周り現在の状況をセルに表示
-そこからルーム詳細へ飛ぶ
-
-searchUseruserを投げるとあるかどうかBoolで返す
-addUserにユーザーを投げると結果がBoolでかえってくる
-deleteUserにユーザーを投げると結果がBoolでかえってくる
-favUserで全件返す
-
-*/
-
-
 import Foundation
 import UIKit
 import Kanna
@@ -61,20 +47,58 @@ class UserPageView:UIViewController,UINavigationControllerDelegate {
     override func viewWillAppear(animated: Bool) {
         super.viewWillAppear(animated)
         
-        
         if Name == Api.auth_user{
             StatusBtn.enabled = false
         }else{
+            StatusBtn.enabled = true
             if Api.searchUser(name: self.Name){
-                self.StatusBtn.setTitle("フォロー中", forState: .Normal)
+                self.StatusBtn.setTitle("お気に入り解除", forState: .Normal)
                 self.StatusBtn.backgroundColor = UIColor(red: 1, green: 150/255, blue: 50/255, alpha: 1)
-                
             }else {
-                self.StatusBtn.setTitle("フォローする", forState: .Normal)
+                self.StatusBtn.setTitle("お気に入り登録", forState: .Normal)
                 self.StatusBtn.backgroundColor = UIColor(red: 60/255, green: 171/255, blue: 1, alpha: 1)
             }
         }
         
+    }
+    
+    @IBAction func FavBtn(sender: AnyObject) {
+        if Api.searchUser(name: self.Name){
+            
+            Api.deleteUser(name: self.Name)
+
+            UIView.animateWithDuration(0.08, animations: {() in
+                self.StatusBtn.enabled = false
+                self.StatusBtn.backgroundColor = UIColor(red: 1, green: 1, blue: 1, alpha: 1)
+                }, completion: {res in
+                    
+                    UIView.animateWithDuration(0.45, animations: {() in
+                        self.StatusBtn.setTitle("お気に入り登録", forState: .Normal)
+                        self.StatusBtn.backgroundColor = UIColor(red: 60/255, green: 171/255, blue: 1, alpha: 1)
+                        
+                        },completion: {res in
+                            self.StatusBtn.enabled = true
+                    })
+            })
+        }else{
+            Api.addUser(name: self.Name)
+
+            UIView.animateWithDuration(0.08, animations: {() in
+                self.StatusBtn.enabled = false
+                self.StatusBtn.backgroundColor = UIColor(red: 1, green: 1, blue: 1, alpha: 1)
+                }, completion: {res in
+                    
+                    UIView.animateWithDuration(0.45, animations: {() in
+                        self.StatusBtn.setTitle("お気に入り解除", forState: .Normal)
+                        self.StatusBtn.backgroundColor = UIColor(red: 1, green: 150/255, blue: 50/255, alpha: 1)
+                        
+                        },completion: {res in
+                            self.StatusBtn.enabled = true
+                    })
+            })
+            
+        }
+        print(Api.favUser)
     }
     
     func getProfSource(){
