@@ -44,24 +44,24 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
         self.nameField.returnKeyType = .Done
         self.naviBar.tintColor = UIColor.whiteColor()
         self.naviBar.topItem?.title = room_name
-        self.submitBtn.layer.cornerRadius = 5
+        self.submitBtn.layer.cornerRadius = 7
         self.submitBtn.layer.borderWidth = 1
         
         //後のカラー設定用
         self.tableview.backgroundColor = UIColor(red: 1, green: 1, blue: 0.98, alpha: 1)
         self.view.backgroundColor = UIColor(red:0.1,green:0.9,blue:0.4,alpha:0)
         self.naviBar.barTintColor = UIColor(red:0.1,green:0.9,blue:0.4,alpha:1.0)
-        self.submitBtn.backgroundColor = UIColor(red: 1, green: 1, blue: 1, alpha: 0)
-        self.submitBtn.layer.borderColor = UIColor.whiteColor().CGColor
+        //self.submitBtn.backgroundColor = UIColor(red: 1, green: 1, blue: 1, alpha: 0)
+        self.submitBtn.layer.borderColor = UIColor.clearColor().CGColor
         
         NSNotificationCenter.defaultCenter().addObserver(self, selector: Selector("keyboardWillShow:"), name:UIKeyboardWillShowNotification, object: nil);
         NSNotificationCenter.defaultCenter().addObserver(self, selector: Selector("keyboardWillHide:"), name:UIKeyboardWillHideNotification, object: nil);
         
         
         self.userimg.image = self.userimg.image!.imageWithRenderingMode(UIImageRenderingMode.AlwaysTemplate)
-        self.userimg.tintColor = .whiteColor()
+        self.userimg.tintColor = .darkGrayColor()
         self.commimg.image = self.commimg.image!.imageWithRenderingMode(UIImageRenderingMode.AlwaysTemplate)
-        self.commimg.tintColor = .whiteColor()
+        self.commimg.tintColor = .darkGrayColor()
         
         let longPressRecognizer = UILongPressGestureRecognizer(target: self, action: "rowButtonAction:")
         longPressRecognizer.allowableMovement = 15
@@ -112,6 +112,13 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
                             )
                             
                         }
+                        
+                        let transition: CATransition = CATransition()
+                        transition.duration = 0.4
+                        transition.type = kCATransitionMoveIn
+                        transition.subtype = kCATransitionFromBottom
+                        
+                        self.comLabel.layer.addAnimation(transition, forKey: nil)
                         self.comLabel.text = "\(self.json!.count)"
                     }
                 })
@@ -141,11 +148,17 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
                 }
                 
                 self.json = JSON(self.json!.arrayObject! + JSON(data).arrayObject!)
+                
+                let transition: CATransition = CATransition()
+                transition.duration = 0.4
+                transition.type = kCATransitionMoveIn
+                transition.subtype = kCATransitionFromBottom
+                
+                self.comLabel.layer.addAnimation(transition, forKey: nil)
                 self.comLabel.text = "\(self.json!.count)"
                 
                 dispatch_async(dispatch_get_main_queue(), { () -> Void in
                     self.tableview.reloadData()
-                    if 
                     self.tableview.scrollToRowAtIndexPath(NSIndexPath(forRow: self.json!.count-1, inSection: 0), atScrollPosition: UITableViewScrollPosition.Bottom, animated: true)
                 })
             }
@@ -170,10 +183,27 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
         }
         
         Socket.on("join") {data, ack in
+            if JSON(data)[0]["ipcount"].stringValue != self.userLabel.text{
+                let transition: CATransition = CATransition()
+                transition.duration = 0.4
+                transition.type = kCATransitionMoveIn
+                transition.subtype = kCATransitionFromBottom
+                
+                self.userLabel.layer.addAnimation(transition, forKey: nil)
+            }
             self.userLabel.text = JSON(data)[0]["ipcount"].stringValue
         }
         
         Socket.on("leave") {data, ack in
+            if JSON(data)[0]["ipcount"].stringValue != self.userLabel.text{
+                let transition: CATransition = CATransition()
+                transition.duration = 0.4
+                transition.type = kCATransitionMoveIn
+                transition.subtype = kCATransitionFromTop
+                
+                self.userLabel.layer.addAnimation(transition, forKey: nil)
+            }
+            
             self.userLabel.text = JSON(data)[0]["ipcount"].stringValue
         }
         
