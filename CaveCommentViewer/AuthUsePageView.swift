@@ -16,6 +16,7 @@ class AuthUserPageVIew:UIViewController,UIImagePickerControllerDelegate,
     UINavigationControllerDelegate,RSKImageCropViewControllerDelegate,
 RSKImageCropViewControllerDataSource,CreateRoomViewDelegate,UIBarPositioningDelegate {
     
+    @IBOutlet weak var naviItem: UINavigationItem!
     @IBOutlet weak var user_img: UIImageView!
     @IBOutlet weak var thumbs_1: UIImageView!
     @IBOutlet weak var thumbs_2: UIImageView!
@@ -23,6 +24,7 @@ RSKImageCropViewControllerDataSource,CreateRoomViewDelegate,UIBarPositioningDele
     @IBOutlet weak var user_name: UILabel!
     @IBOutlet weak var newRoomBt: UIBarButtonItem!
     @IBOutlet weak var StatusBtn: UIButton!
+    @IBOutlet weak var OverLayView: UIView!
     
     var thumbs_1_url:String!
     var thumbs_2_url:String!
@@ -36,7 +38,7 @@ RSKImageCropViewControllerDataSource,CreateRoomViewDelegate,UIBarPositioningDele
     var imagePros:Bool = false
     var _session:String = ""
     var StatusJson:JSON!
-    var Overlay:UIView!
+    //var Overlay:UIView!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -67,6 +69,7 @@ RSKImageCropViewControllerDataSource,CreateRoomViewDelegate,UIBarPositioningDele
             self.Socket.removeAllHandlers()
             self.Socket.disconnect()
             self.Socket = nil
+            UIApplication.sharedApplication().networkActivityIndicatorVisible = false
         }
     }
     
@@ -457,6 +460,16 @@ RSKImageCropViewControllerDataSource,CreateRoomViewDelegate,UIBarPositioningDele
         self.navigationController?.popViewControllerAnimated(true)
     }
     
+    @IBAction func stopWaitBtn(sender: AnyObject) {
+        UIView.animateWithDuration(0.6, animations: {
+            self.OverLayView.alpha = 0
+            }, completion: {res in
+                self.OverLayView.hidden = true
+                self.OverLayView.alpha = 1
+                self.newRoomBt.enabled = true
+        })
+    }
+    
     func createRoom(params param: String) {
         var Params = param
         
@@ -488,16 +501,14 @@ RSKImageCropViewControllerDataSource,CreateRoomViewDelegate,UIBarPositioningDele
                 let resp = JSON(data: data!)
                 if resp.count != 0{
                     dispatch_async(dispatch_get_main_queue()){() in
-                        status.animation(str:"放送待機状態に入りました")
                         self.navigationController?.popViewControllerAnimated(true)
                         
-                        self.Overlay = UIView(frame:CGRect(origin: CGPoint(x: 0, y: 0), size: self.view.bounds.size))
-                        self.Overlay.backgroundColor = .blackColor()
-                        self.Overlay.alpha = 0.4
-                        
+                        self.OverLayView.hidden = false
                         self.newRoomBt.enabled = false
-                        self.view.addSubview(self.Overlay)
                         
+                        let backButtonItem = UIBarButtonItem(title: "HOGE", style: UIBarButtonItemStyle.Plain, target: self, action: nil)
+                        
+                        self.naviItem.backBarButtonItem = backButtonItem
                     }
                 }else{
                     UIApplication.sharedApplication().networkActivityIndicatorVisible = false
@@ -540,9 +551,11 @@ RSKImageCropViewControllerDataSource,CreateRoomViewDelegate,UIBarPositioningDele
                     
                     dispatch_after(time, dispatch_get_main_queue(), {
                         self.dismissViewControllerAnimated(true, completion: nil)
-                        self.Overlay.removeFromSuperview()
                         Commentview.modalPresentationStyle = .FullScreen
-                        self.presentViewController(Commentview, animated: true, completion:nil)
+                        self.presentViewController(Commentview, animated: true, completion:{
+                            self.OverLayView.hidden = true
+                            self.newRoomBt.enabled = true
+                        })
                     })
                     
                 }
