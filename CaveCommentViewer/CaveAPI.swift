@@ -143,6 +143,7 @@ class CaveAPI {
             self.ud.setObject(favUser, forKey: "favUser")
             self.ud.synchronize()
         }
+        
     }
     
     internal func searchUser(name name:String) -> Bool{
@@ -195,37 +196,47 @@ class CaveAPI {
         }
     }
     
-    internal func presetNames() -> [String]{
-        var strArray:[String] = []
-        
+    internal func searchPreset(name name:String) -> Bool{
         for preset in self.presets{
-           strArray.append(preset.PresetName)
+            print("\(preset.PresetName) : \(name)")
+            if preset.PresetName == name{
+                return true
+            }
         }
-        
-        return strArray
-    }
-    
-    internal func loadPreset(presetName presetName:String) -> Preset{
-        for preset in self.presets{
-            print(preset.PresetName)
-        }
-        return self.presets[0]
-    }
-    
-    internal func savePreset(preset preset:Preset) -> Bool{
-        var data = self.ud.objectForKey("Presets") as! NSData
-        var pre = NSKeyedUnarchiver.unarchiveObjectWithData(data) as! [Preset]
-        
-        pre.append(preset)
-        print(pre)
-        
-        data = NSKeyedArchiver.archivedDataWithRootObject(pre)
-        
-        self.ud.setObject(data, forKey: "Presets")
-        self.ud.synchronize()
         return false
     }
     
+    internal func savePreset(preset preset:Preset) -> Bool{
+        if searchPreset(name: preset.PresetName) == true{
+            return false
+        }
+        
+        let data = self.ud.objectForKey("Presets") as! NSData
+        var pre = NSKeyedUnarchiver.unarchiveObjectWithData(data) as! [Preset]
+        
+        pre.append(preset)
+        presets = pre
+        
+        return true
+    }
+    
+    internal func deletePreset(preset preset:Preset) -> Bool{
+        var pre:[Preset] = self.presets
+        var strArray:[String] = []
+        
+        for preset in self.presets{
+            strArray.append(preset.PresetName)
+        }
+        let index = strArray.indexOf(preset.PresetName)
+        if index != nil {
+            pre.removeAtIndex(index!)
+            self.presets = pre
+            
+            return true
+        }else{
+            return false
+        }
+    }
     
     internal func Login(user user:String,pass:String,regist:(Bool)->Void){
         let str = "user_name=\(user)&password=\(pass)"
@@ -302,7 +313,6 @@ class CaveAPI {
         request.HTTPBody = strData
         
         let task : NSURLSessionDataTask = NSURLSession.sharedSession().dataTaskWithRequest(request) { (data, response, error) -> Void in
-            UIApplication.sharedApplication().networkActivityIndicatorVisible = false
             
             if error != nil {
                 errorStatus.offlineError(error: error!)
@@ -317,7 +327,6 @@ class CaveAPI {
                 success(nil)
             }
         }
-        UIApplication.sharedApplication().networkActivityIndicatorVisible = true
         task.resume()
     }
     
