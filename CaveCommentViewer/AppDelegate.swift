@@ -6,9 +6,13 @@
 //  Copyright (c) 2015年 月下. All rights reserved.
 //
 
+/*
+・プリセット名デフォルト表示
+・上書き更新
+・
+*/
+
 import UIKit
-import Fabric
-import Crashlytics
 import SwiftyJSON
 import KeychainAccess
 
@@ -34,7 +38,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var HomeStream:Bool = false
     
     func application(application: UIApplication, didFinishLaunchingWithOptions launchOptions: [NSObject: AnyObject]?) -> Bool {
-        Fabric.with([Crashlytics()])
         UIApplication.sharedApplication().setMinimumBackgroundFetchInterval(UIApplicationBackgroundFetchIntervalMinimum)
         
         //初回起動時に各種初期化する
