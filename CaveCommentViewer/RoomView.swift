@@ -43,6 +43,7 @@ class RoomView: UIViewController{
     @IBOutlet weak var textView: UITextView!
     @IBOutlet weak var user_icon: UIImageView!
     @IBOutlet weak var comment_icon: UIImageView!
+    @IBOutlet weak var connectBtn: UIButton!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -53,13 +54,13 @@ class RoomView: UIViewController{
         NavTitle.sizeToFit()
         navigationItem.titleView = NavTitle;
         
-        let date_formatter: NSDateFormatter = NSDateFormatter()
-        date_formatter.locale     = NSLocale(localeIdentifier: "ja")
-        date_formatter.dateFormat = "M'月'dd'日' H'時'mm'分開始'"
+        let DateFormatter: NSDateFormatter = NSDateFormatter()
+        DateFormatter.locale     = NSLocale(localeIdentifier: "ja")
+        DateFormatter.dateFormat = "M'月'dd'日' H'時'mm'分開始'"
         
         lb_title.text = "  \(entry_title!)"
         lb_author.text = "\(entry_author!)さん"
-        lb_date.text = date_formatter.stringFromDate(entry_date!)
+        lb_date.text = DateFormatter.stringFromDate(entry_date!)
         lb_listener.text = "\(entry_listener!)"
         lb_comment.text = "\(entry_comment!)"
         
@@ -88,7 +89,7 @@ class RoomView: UIViewController{
             
             var attributedString:NSAttributedString!
             let encodedData:NSData = self.entry_content!.dataUsingEncoding(NSUTF8StringEncoding)!
-
+            
             if encodedData.length == 0{
                 let data:NSData = "コメントはありません".dataUsingEncoding(NSUTF8StringEncoding)!
                 attributedString = try! NSAttributedString(data: data, options: attributedOptions, documentAttributes: nil)
@@ -98,7 +99,7 @@ class RoomView: UIViewController{
                 let decodedString:NSData  = attributedString.string.dataUsingEncoding(NSUTF8StringEncoding)!
                 attributedString = try! NSAttributedString(data: decodedString, options: attributedOptions, documentAttributes: nil)
             }
-
+            
             
             
             dispatch_async(dispatch_get_main_queue(), {
@@ -151,6 +152,11 @@ class RoomView: UIViewController{
         super.didReceiveMemoryWarning()
     }
     
+    override func viewDidAppear(animated: Bool) {
+        super.viewDidAppear(animated)
+        UIApplication.sharedApplication().networkActivityIndicatorVisible = false
+    }
+    
     func authTap(sender:UITapGestureRecognizer){
         self.performSegueWithIdentifier("toUserPage",sender:nil)
     }
@@ -195,6 +201,17 @@ class RoomView: UIViewController{
             status.animation(str: "画像の保存完了しました")
         }
         
+    }
+    
+    @IBAction func connectRoom(sender: AnyObject) {
+        self.connectBtn.alpha = 0.1
+        UIApplication.sharedApplication().networkActivityIndicatorVisible = true
+        
+        UIView.animateWithDuration(0.4, animations: {() in
+            self.connectBtn.alpha = 1
+            }, completion: {res in
+                self.performSegueWithIdentifier("toCommentView",sender:nil)
+        })
     }
     
     override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject!) {
