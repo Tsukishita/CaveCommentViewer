@@ -182,7 +182,6 @@ class CaveAPI {
         return
     }
     
-    
     //Presets
     private(set) var presets:[Preset]{
         get{

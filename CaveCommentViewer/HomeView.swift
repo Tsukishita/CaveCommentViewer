@@ -5,6 +5,11 @@
 //  Created by 月下 on 2015/06/30.
 //  Copyright (c) 2015年 月下. All rights reserved.
 
+/*
+Live形式　live archive favorite
+*/
+
+
 import UIKit
 import Foundation
 import Socket_IO_Client_Swift
@@ -37,7 +42,7 @@ UITableViewDataSource,NSXMLParserDelegate{
     var PreUpdate:String = "live"
     
     var NavTitleView: UILabel = UILabel()
-    var LeastUpdate: NSDate! = nil
+    var LeastUpdate: NSDate?
     var RefreshControl: UIRefreshControl!
     
     var ProfLabel:UILabel = UILabel()
@@ -66,9 +71,12 @@ UITableViewDataSource,NSXMLParserDelegate{
     
     var ParseKey : String! = ""
     var TmpEntry : Entry! = nil
-    var Entries : NSMutableArray! = NSMutableArray()
-    var ParseEntries : NSMutableArray! = NSMutableArray()
+    var Entries : NSMutableArray = NSMutableArray()
+    var ParseEntries : NSMutableArray = NSMutableArray()
     var ListReload: Bool = false
+    
+    var FavUsers:NSMutableArray = NSMutableArray()
+    
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -92,11 +100,12 @@ UITableViewDataSource,NSXMLParserDelegate{
         sortButton.image = UIImage(named: "Sort_descending_64")?.imageWithRenderingMode(UIImageRenderingMode.AlwaysTemplate)
         sortButton.tintColor = UIColor.whiteColor()
         
-        let serachButton = UIBarButtonItem(image: nil, style: .Plain, target: self, action: "searchAction:")
-        serachButton.image = UIImage(named: "login12")?.imageWithRenderingMode(UIImageRenderingMode.AlwaysTemplate)
-        serachButton.tintColor = UIColor.whiteColor()
+        //searchAction廃止予定
+        //        let serachButton = UIBarButtonItem(image: nil, style: .Plain, target: self, action: "searchAction:")
+        //        serachButton.image = UIImage(named: "login12")?.imageWithRenderingMode(UIImageRenderingMode.AlwaysTemplate)
+        //        serachButton.tintColor = UIColor.whiteColor()
         
-        navigationItem.rightBarButtonItems = [sortButton,serachButton]
+        navigationItem.rightBarButtonItems = [sortButton]
         
         //メニュー
         let displayHeight: CGFloat = self.view.frame.height
@@ -125,6 +134,9 @@ UITableViewDataSource,NSXMLParserDelegate{
         ProfTable.separatorInset = UIEdgeInsetsZero
         ProfTable.layoutMargins = UIEdgeInsetsZero
         
+        TableView.separatorInset = UIEdgeInsetsZero
+        TableView.layoutMargins = UIEdgeInsetsZero
+        
         MenuView.addSubview(ProfLabel)
         MenuView.addSubview(ProfImg)
         MenuView.addSubview(ProfTable)
@@ -134,7 +146,7 @@ UITableViewDataSource,NSXMLParserDelegate{
         self.OverRay.backgroundColor = UIColor(red: 0, green: 0, blue: 0, alpha: 1)
         self.OverRay.alpha = 0
         
-        let longPressRecognizer = UILongPressGestureRecognizer(target: self, action: "CellTap:")
+        let longPressRecognizer = UILongPressGestureRecognizer(target: self, action: "cellTap:")
         longPressRecognizer.allowableMovement = 15
         longPressRecognizer.minimumPressDuration = 0.5
         self.ProfTable.addGestureRecognizer(longPressRecognizer)
@@ -150,7 +162,7 @@ UITableViewDataSource,NSXMLParserDelegate{
         
         self.RefreshControl = UIRefreshControl()
         self.RefreshControl.attributedTitle = NSAttributedString(string: "最終更新はありません")
-        self.RefreshControl.addTarget(self, action: "getXMLRequest", forControlEvents: UIControlEvents.ValueChanged)
+        self.RefreshControl.addTarget(self, action: "dataLoad", forControlEvents: UIControlEvents.ValueChanged)
         
         self.TableView.addSubview(RefreshControl)
         NSNotificationCenter.defaultCenter().addObserver(self, selector: "enterBackground:", name: UIApplicationDidEnterBackgroundNotification, object: nil)
@@ -158,14 +170,17 @@ UITableViewDataSource,NSXMLParserDelegate{
         let timer = NSTimer.scheduledTimerWithTimeInterval(60, target: self, selector: "datemngr", userInfo: nil, repeats: true)
         NSRunLoop.mainRunLoop().addTimer(timer, forMode: NSRunLoopCommonModes)
         
-        getXMLRequest() //XMLの取得
+        dataLoad() //XMLの取得
     }
     
     override func viewWillAppear(animated: Bool) {
         super.viewDidDisappear(animated)
-        MenuProf()
+        menuProf()
         if !appDelegate.HomeStream{
             socketDisconnect()
+        }
+        if Api.favUser.count != FavUsers.count && UrlSwitch == "favorite"{
+            dataLoad()
         }
     }
     
@@ -347,7 +362,7 @@ UITableViewDataSource,NSXMLParserDelegate{
                         Commentview.room_author = textFields.text!
                         Commentview.modalPresentationStyle = .OverCurrentContext
                         dispatch_async(dispatch_get_main_queue(), { () -> Void in
-                            self.presentViewController(Commentview, animated: true, completion: {})
+                            self.presentViewController(Commentview, animated: true, completion: nil)
                         })
                     }else if status == "ARCHIVE"{
                         let unixInt:Double = JSON(data: data!)["entries"][0]["start_date"].doubleValue/1000
@@ -370,7 +385,7 @@ UITableViewDataSource,NSXMLParserDelegate{
                         }
                         alertController.addAction(close)
                         dispatch_async(dispatch_get_main_queue(), { () -> Void in
-                            self.presentViewController(alertController, animated: true, completion: {})
+                            self.presentViewController(alertController, animated: true, completion: nil)
                         })
                     }
                 }
@@ -482,7 +497,11 @@ UITableViewDataSource,NSXMLParserDelegate{
     //TableDelegate
     func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         if tableView.tag == 0 {
-            return self.Entries.count
+            if UrlSwitch == "favorite"{
+                return Api.favUser.count
+            }else{
+                return self.Entries.count
+            }
         }else{
             return MenuValue.count
         }
@@ -490,51 +509,117 @@ UITableViewDataSource,NSXMLParserDelegate{
     
     func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
         if tableView.tag == 0 {
-            
-            let entry : Entry! = Entries.objectAtIndex(indexPath.row) as? Entry
-            let cell: CustomCell = tableView.dequeueReusableCellWithIdentifier("CustomCell", forIndexPath: indexPath) as! CustomCell
-            entry.outpage = true
-            if entry.img == nil {
-                let str = entry.img_url
-                let url:NSURL = NSURL(
-                    string: str.stringByAddingPercentEncodingWithAllowedCharacters(
-                        NSCharacterSet.URLQueryAllowedCharacterSet())!
-                    )!
-                let request = NSMutableURLRequest(URL: url)
-                let task : NSURLSessionDataTask = NSURLSession.sharedSession().dataTaskWithRequest(request) {
-                    (data, response, error) -> Void in
-                    
-                    if error != nil {
-                        print(error!)
-                        return
+            if UrlSwitch == "favorite"{
+                
+                let Cell: UserCell = tableView.dequeueReusableCellWithIdentifier("UserCell", forIndexPath: indexPath) as! UserCell
+                let favorite = self.FavUsers[indexPath.row] as! Favorites
+                
+                let date = favorite.Date
+                let formatter = NSDateFormatter()
+                formatter.locale     = NSLocale(localeIdentifier: "ja")
+                formatter.dateFormat = "MM/dd HH:mm:ss"
+                
+                Cell.imgUser.image = nil
+                Cell.labelTitle!.text = favorite.Title
+                Cell.labelTIme!.text = formatter.stringFromDate(date)
+                
+                if favorite.ImgSrc == nil{
+                    let AuthUrl:NSURL = NSURL(string: "http://img.cavelis.net/userimage/l/\(favorite.Auth).png".stringByAddingPercentEncodingWithAllowedCharacters(
+                        NSCharacterSet.URLQueryAllowedCharacterSet()
+                        )!)!
+                    let AuthRequest: NSURLRequest = NSURLRequest(URL:AuthUrl,cachePolicy: NSURLRequestCachePolicy.ReloadIgnoringLocalCacheData,timeoutInterval: 10)
+                    let AuthTask : NSURLSessionDataTask = NSURLSession.sharedSession().dataTaskWithRequest(AuthRequest) { (data, response, error) -> Void in
+                        if error == nil {
+                            dispatch_async(dispatch_get_main_queue()){()in
+                                favorite.ImgSrc = UIImage(data: data!)
+                                Cell.imgUser.image = favorite.ImgSrc
+                                self.FavUsers[indexPath.row] = favorite
+                            }
+                        }
                     }
-                    entry.img = UIImage(data:data!)
-                    dispatch_async(dispatch_get_main_queue()) { () in
-                        cell.imgRoom.image = UIImage(data:data!)
-                    }
-                    
+                    AuthTask.resume()
+                }else{
+                    Cell.imgUser!.image = favorite.ImgSrc
                 }
-                cell.imgRoom.image = nil
                 
-                task.resume()
+                if favorite.Live == true {
+                    let time = Int(NSDate().timeIntervalSinceDate(favorite.Date))
+                    
+                    let hour:Int = time / 3600
+                    let min:Int = (time-hour*3600)/60
+                    let minS:String = min > 9 ? "\(min)" : "0\(min)"
+                    
+                    Cell.labelAtTime.text = hour == 0 ? "\(min)m" : "\(hour)h\(minS)m"
+                    
+                    Cell.StreamLabel!.text = "LIVE"
+                    Cell.StreamLabel!.textColor = .orangeColor()
+                    Cell.CellLamp!.backgroundColor = .orangeColor()
+                    Cell.StreamLabel.alpha = 0.18
+                }else{
+                    
+                    Cell.labelAtTime.text = ""
+                    Cell.StreamLabel.text = ""
+                    Cell.CellLamp!.backgroundColor = .grayColor()
+                }
+                
+                Cell.labelAuthor.text = favorite.Auth
+                Cell.separatorInset = UIEdgeInsetsZero
+                Cell.layoutMargins = UIEdgeInsetsZero
+                
+                self.NavTitleView.text = "お気に入りユーザー"
+                self.NavTitleView.sizeToFit()
+                self.navigationItem.titleView = self.NavTitleView
+                
+                return Cell
             }else{
+                let entry : Entry! = Entries.objectAtIndex(indexPath.row) as? Entry
+                let cell: CustomCell = tableView.dequeueReusableCellWithIdentifier("CustomCell", forIndexPath: indexPath) as! CustomCell
+                entry.outpage = true
+                if entry.img == nil {
+                    let str = entry.img_url
+                    let url:NSURL = NSURL(
+                        string: str.stringByAddingPercentEncodingWithAllowedCharacters(
+                            NSCharacterSet.URLQueryAllowedCharacterSet())!
+                        )!
+                    let request = NSMutableURLRequest(URL: url)
+                    let task : NSURLSessionDataTask = NSURLSession.sharedSession().dataTaskWithRequest(request) {
+                        (data, response, error) -> Void in
+                        
+                        if error != nil {
+                            print(error!)
+                            return
+                        }
+                        entry.img = UIImage(data:data!)
+                        dispatch_async(dispatch_get_main_queue()) { () in
+                            cell.imgRoom.image = UIImage(data:data!)
+                        }
+                        
+                    }
+                    cell.imgRoom.image = nil
+                    
+                    task.resume()
+                }else{
+                    
+                    cell.imgRoom.image = entry.img
+                }
                 
-                cell.imgRoom.image = entry.img
+                cell.labelTitle!.text = entry.title
+                cell.labelAuthor!.text = entry.name
+                cell.labelUser!.text = entry.listener
+                cell.labelComment!.text = entry.comment_num
+                cell.imgUser.image  = UseImg
+                cell.imgComment.image = ComImg
+                
+                cell.imgUser.tintColor = UIColor(red:0.31,green:0.21,blue:0.19,alpha:1.0)
+                cell.imgComment.tintColor = UIColor(red:0.31,green:0.21,blue:0.19,alpha:1.0)
+                
+                let time = Int(NSDate().timeIntervalSinceDate(entry.date!))
+                cell.labelTIme.text = (time / 3600 >= 1) ? "\(time / 3600)時間経過" : "\(time / 60)分経過"
+                
+                cell.separatorInset = UIEdgeInsetsZero
+                cell.layoutMargins = UIEdgeInsetsZero
+                return cell
             }
-            
-            cell.labelTitle!.text = entry.title
-            cell.labelAuthor!.text = entry.name
-            cell.labelUser!.text = entry.listener
-            cell.labelComment!.text = entry.comment_num
-            cell.imgUser.image  = UseImg
-            cell.imgComment.image = ComImg
-            cell.imgUser.tintColor = UIColor(red:0.31,green:0.21,blue:0.19,alpha:1.0)
-            cell.imgComment.tintColor = UIColor(red:0.31,green:0.21,blue:0.19,alpha:1.0)
-            
-            let time = Int(NSDate().timeIntervalSinceDate(entry.date!))
-            cell.labelTIme.text = (time / 3600 >= 1) ? "\(time / 3600)時間経過" : "\(time / 60)分経過"
-            
-            return cell
         }else{
             let cell: UITableViewCell = UITableViewCell(style: UITableViewCellStyle.Subtitle, reuseIdentifier: "Cell")
             if Api.auth_user == ""{
@@ -542,6 +627,7 @@ UITableViewDataSource,NSXMLParserDelegate{
             }else{
                 MenuValue[0] = "ユーザーページ"
             }
+            
             if UrlSwitch == "live" && indexPath.row == 1{
                 if appDelegate.HomeStream{
                     cell.contentView.backgroundColor = UIColor(red: 0.95, green: 0.95, blue: 1, alpha: 1)
@@ -550,7 +636,10 @@ UITableViewDataSource,NSXMLParserDelegate{
                 }
             }else if UrlSwitch == "archive" && indexPath.row == 2{
                 cell.contentView.backgroundColor = UIColor(red: 0.65, green: 1, blue: 0.75, alpha: 0.5)
+            }else if UrlSwitch == "favorite" && indexPath.row == 3{
+                cell.contentView.backgroundColor = UIColor(red: 0.65, green: 1, blue: 0.75, alpha: 0.5)
             }
+            
             
             cell.textLabel?.text = MenuValue[indexPath.row]
             cell.backgroundColor =  UIColor(red: 0.92, green: 1, blue: 0.95, alpha: 1)
@@ -562,9 +651,37 @@ UITableViewDataSource,NSXMLParserDelegate{
     
     func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath:(NSIndexPath)) {
         if tableView.tag == 0 {
-            //RoomTable
-            self.performSegueWithIdentifier("toRoomView",sender:indexPath.row)
-            tableView.deselectRowAtIndexPath(indexPath, animated: true)
+            if UrlSwitch == "favorite"{
+                let stream = self.FavUsers[indexPath.row] as! Favorites
+                if stream.Live != true{
+                    let UserPage:UserPageView = self.storyboard?.instantiateViewControllerWithIdentifier("UserPage") as! UserPageView
+                    UserPage.Image = stream.ImgSrc
+                    UserPage.Name = stream.Auth
+                    self.showViewController(UserPage, sender: nil)
+                    tableView.deselectRowAtIndexPath(indexPath, animated: true)
+                    
+                    return
+                }
+                
+                let Commentview: CommentView = self.storyboard?.instantiateViewControllerWithIdentifier("CommentView") as! CommentView
+                let FavTemp = self.FavUsers[indexPath.row] as! Favorites
+                
+                Commentview.roomid = FavTemp.RoomId
+                Commentview.room_name = FavTemp.Title
+                Commentview.live_status = true
+                Commentview.room_startTime = FavTemp.Date
+                Commentview.room_author = FavTemp.Auth
+                Commentview.modalPresentationStyle = .OverCurrentContext
+                
+                tableView.deselectRowAtIndexPath(indexPath, animated: true)
+                dispatch_async(dispatch_get_main_queue(), { () -> Void in
+                    self.presentViewController(Commentview, animated: true, completion: {})
+                })
+            }else{
+                UIApplication.sharedApplication().networkActivityIndicatorVisible = true
+                self.performSegueWithIdentifier("toRoomView",sender:indexPath.row)
+                tableView.deselectRowAtIndexPath(indexPath, animated: true)
+            }
         }else{
             //MenuTable
             if indexPath.row == 0{
@@ -585,17 +702,15 @@ UITableViewDataSource,NSXMLParserDelegate{
             }else if indexPath.row == 1 && UrlSwitch != "live"{
                 self.PreUpdate = UrlSwitch
                 UrlSwitch = "live"
-                getXMLRequest()
+                dataLoad()
             }else if indexPath.row == 2 && UrlSwitch != "archive"{
                 self.PreUpdate = UrlSwitch
                 UrlSwitch = "archive"
-                getXMLRequest()
+                dataLoad()
             }else if indexPath.row == 3{
-                let alert = UIAlertView()
-                alert.title = "お気に入りの放送"
-                alert.message = "未実装"
-                alert.addButtonWithTitle("OK")
-                alert.show()
+                self.PreUpdate = UrlSwitch
+                UrlSwitch = "favorite"
+                dataLoad()
             }else if indexPath.row == 4{
                 socketDisconnect()
                 let controller: UINavigationController! = self.storyboard?.instantiateViewControllerWithIdentifier("SettingRoot") as? UINavigationController
@@ -635,18 +750,106 @@ UITableViewDataSource,NSXMLParserDelegate{
     func tableView(tableView: UITableView, heightForRowAtIndexPath indexPath: NSIndexPath) -> CGFloat {
         switch tableView.tag{
         case 0:
-            return 100
+            if UrlSwitch == "favorite"{
+                return 76
+            }
+            return 90
         default:
             return 44
         }
         
     }
     
+    func dataLoad(){
+        switch UrlSwitch{
+        case "live":
+            getXMLRequest(url:"http://rss.cavelis.net/index_live.xml")
+        case "archive":
+            getXMLRequest(url:"http://rss.cavelis.net/index_archive.xml")
+        case "favorite":
+            getFavUserData()
+        default:break
+            
+        }
+    }
+    
+    func getFavUserData(){
+        UIApplication.sharedApplication().networkActivityIndicatorVisible = true
+        let TempArray:NSMutableArray = NSMutableArray()
+        
+        for name in Api.favUser{
+            let TempFav = Favorites()
+            
+            let StatusURL:NSURL = NSURL(string:
+                "http://gae.cavelis.net/user_entry/\(name)".stringByAddingPercentEncodingWithAllowedCharacters(
+                    NSCharacterSet.URLQueryAllowedCharacterSet()
+                    )!
+                )!
+            
+            let StatusRequest: NSURLRequest = NSURLRequest(URL:StatusURL,cachePolicy: NSURLRequestCachePolicy.ReloadIgnoringLocalCacheData,timeoutInterval: 10)
+            let StatusTask : NSURLSessionDataTask = NSURLSession.sharedSession().dataTaskWithRequest(StatusRequest) { (data, response, error) -> Void in
+                if error != nil {
+                    TempArray.removeAllObjects()
+                    self.RefreshControl?.endRefreshing()
+                    return
+                } else {
+                    let json = JSON(data: data!)
+                    
+                    let unixInt:Double = json["entries"][0]["start_date"].doubleValue/1000
+                    
+                    TempFav.Title = json["entries"][0]["title"].stringValue
+                    TempFav.Auth = name
+                    TempFav.Date =  NSDate(timeIntervalSince1970: unixInt)
+                    TempFav.RoomId = json["entries"][0]["stream_name"].stringValue
+                    TempFav.Viewer = json["entries"][0]["viewer"].stringValue
+                    TempFav.CommentNum = json["entries"][0]["comment_num"].stringValue
+                    TempFav.Live = json["entries"][0]["status"] == "LIVE" ? true : false
+                    
+                    TempArray.addObject(TempFav)
+                    
+                    if self.Api.favUser.count == TempArray.count{
+                        
+                        //イケてないソート
+                        for(var i=0;i<self.Api.favUser.count;i++){
+                            let favlist = self.Api.favUser[i]
+                            for(var j=0;j<TempArray.count;j++){
+                                let item = TempArray[j] as! Favorites
+                                if favlist == item.Auth{
+                                    TempArray.exchangeObjectAtIndex(j, withObjectAtIndex: i)
+                                }
+                            }
+                        }
+                        
+                        //放送順ソート
+                        for(var i=0;i<TempArray.count;i++){
+                            for(var j=i;j<TempArray.count;j++){
+                                let item = TempArray[j] as! Favorites
+                                if item.Live == true{
+                                    TempArray.exchangeObjectAtIndex(j, withObjectAtIndex: i)
+                                }
+                            }
+                        }
+                        
+                        dispatch_async(dispatch_get_main_queue()){()in
+                            UIApplication.sharedApplication().networkActivityIndicatorVisible = false
+                            
+                            self.FavUsers = NSMutableArray(array:TempArray)
+                            TempArray.removeAllObjects()
+                            self.TableView.reloadData()
+                            self.ProfTable.reloadData()
+                            
+                            self.RefreshControl?.endRefreshing()
+                            self.TableView.flashScrollIndicators()
+                        }
+                    }
+                }}
+            StatusTask.resume()
+        }
+    }
+    
     //XMLの取得
-    func getXMLRequest() {
-        let url:NSURL = UrlSwitch == "live"
-            ? NSURL(string: "http://rss.cavelis.net/index_live.xml")!
-            : NSURL(string: "http://rss.cavelis.net/index_archive.xml")!
+    func getXMLRequest(url url:String) {
+        let url:NSURL = NSURL(string: url)!
         
         let request : NSURLRequest! = NSURLRequest(URL:url,cachePolicy: NSURLRequestCachePolicy.ReloadIgnoringLocalCacheData,timeoutInterval: 10)
         
@@ -658,34 +861,40 @@ UITableViewDataSource,NSXMLParserDelegate{
             } else {
                 UIApplication.sharedApplication().networkActivityIndicatorVisible = false
                 let httpResp: NSHTTPURLResponse = response as! NSHTTPURLResponse
+                
+                if httpResp.allHeaderFields["Last-Modified"] == nil{
+                    return
+                }
+                
                 let lastModifiedDate = httpResp.allHeaderFields["Last-Modified"] as! String
-                let date_formatter: NSDateFormatter = NSDateFormatter()
-                date_formatter.locale     = NSLocale(localeIdentifier: "US")
-                date_formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss Z"
+                let DateFormatter: NSDateFormatter = NSDateFormatter()
+                DateFormatter.locale     = NSLocale(localeIdentifier: "US")
+                DateFormatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss Z"
                 if self.LeastUpdate != nil {
-                    if self.LeastUpdate!.compare(date_formatter.dateFromString(lastModifiedDate)!) == NSComparisonResult.OrderedAscending{
-                        self.LeastUpdate = date_formatter.dateFromString(lastModifiedDate)
+                    if self.LeastUpdate!.compare(DateFormatter.dateFromString(lastModifiedDate)!) == NSComparisonResult.OrderedAscending{
+                        self.LeastUpdate = DateFormatter.dateFromString(lastModifiedDate)
                         self.RefreshControl?.endRefreshing()
                         self.XMLParser(data!)
                     }else if self.PreUpdate != self.UrlSwitch{
                         self.PreUpdate = self.UrlSwitch
                         self.RefreshControl?.endRefreshing()
-                        self.LeastUpdate = date_formatter.dateFromString(lastModifiedDate)
+                        self.LeastUpdate = DateFormatter.dateFromString(lastModifiedDate)
                         self.XMLParser(data!)
                     }else{
                         self.RefreshControl?.endRefreshing()
                         self.PreUpdate = self.UrlSwitch
                     }
                 }else if self.Entries.count == 0{
-                    self.LeastUpdate = date_formatter.dateFromString(lastModifiedDate)
+                    self.RefreshControl?.endRefreshing()
+                    self.LeastUpdate = DateFormatter.dateFromString(lastModifiedDate)
                     self.XMLParser(data!)
                 }
-                date_formatter.locale     = NSLocale(localeIdentifier: "ja")
-                date_formatter.dateFormat = "'最終更新:'H'時'mm'分'"
+                DateFormatter.locale     = NSLocale(localeIdentifier: "ja")
+                DateFormatter.dateFormat = "'最終更新:'H'時'mm'分'"
                 dispatch_async(dispatch_get_main_queue(), { () -> Void in
                     if self.LeastUpdate != nil{
                         self.RefreshControl.attributedTitle? = NSAttributedString(
-                            string: date_formatter.stringFromDate(self.LeastUpdate!)
+                            string: DateFormatter.stringFromDate(self.LeastUpdate!)
                         )
                     }
                 })
@@ -713,8 +922,7 @@ UITableViewDataSource,NSXMLParserDelegate{
                 })
             } else {
                 print("parse failure! Retry...")
-                LeastUpdate = nil
-                getXMLRequest()
+                self.XMLParser(data)
             }
         } else {
             print("failed to parse XML")
@@ -748,11 +956,11 @@ UITableViewDataSource,NSXMLParserDelegate{
             case nameKey:
                 TmpEntry.name = string
             case dateKey:
-                let date_formatter: NSDateFormatter = NSDateFormatter()
-                date_formatter.locale     = NSLocale(localeIdentifier: "ja")
-                date_formatter.dateFormat = "yyyy'-'MM'-'dd'T'HH':'mm':'ss'Z'"
-                date_formatter.timeZone = NSTimeZone(abbreviation: "GMT")
-                TmpEntry.date = date_formatter.dateFromString(string)
+                let DateFormatter: NSDateFormatter = NSDateFormatter()
+                DateFormatter.locale     = NSLocale(localeIdentifier: "ja")
+                DateFormatter.dateFormat = "yyyy'-'MM'-'dd'T'HH':'mm':'ss'Z'"
+                DateFormatter.timeZone = NSTimeZone(abbreviation: "GMT")
+                TmpEntry.date = DateFormatter.dateFromString(string)
             case img_urlKey:
                 TmpEntry.img_url = string == "http:/img/no_thumbnail_image.png" ? "http://gae.cavelis.net/img/no_thumbnail_image.png" : string
             case contentKey:
@@ -776,7 +984,7 @@ UITableViewDataSource,NSXMLParserDelegate{
     }
     
     //メニュー
-    func MenuProf(){
+    func menuProf(){
         if Api.auth_user != ""{
             let auth_user = Api.auth_user
             ProfLabel.text = auth_user
@@ -801,7 +1009,7 @@ UITableViewDataSource,NSXMLParserDelegate{
         
     }
     
-    func CellTap(sender:UILongPressGestureRecognizer){
+    func cellTap(sender:UILongPressGestureRecognizer){
         if sender.state != UIGestureRecognizerState.Began {
             return
         }
@@ -899,7 +1107,7 @@ UITableViewDataSource,NSXMLParserDelegate{
     }
     
     override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject!) {
-        if (segue.identifier == "toRoomView") {
+        if (segue.identifier == "toRoomView"){
             let index:Int = sender as! Int
             let entry : Entry! = Entries.objectAtIndex(index) as? Entry
             let Room : RoomView = segue.destinationViewController as! RoomView
@@ -923,4 +1131,31 @@ UITableViewDataSource,NSXMLParserDelegate{
         }
     }
     
+}
+
+class Entry {
+    var title :String!
+    var name: String!
+    var date: NSDate!
+    var room_com: String!
+    var room_id: String!
+    var tag: String?
+    var img_url: String!
+    var img:UIImage!
+    var outpage:Bool?
+    var listener:String!
+    var comment_num:String!
+}
+
+class Favorites {
+    var Title :String!
+    var Auth: String!
+    var Date: NSDate!
+    var RoomId: String!
+    var Tag: String?
+    var Live: Bool!
+    var ImgSrc:UIImage?
+    var AuthImgUrl:String!
+    var Viewer:String!
+    var CommentNum:String!
 }

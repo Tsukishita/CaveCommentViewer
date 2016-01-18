@@ -11,20 +11,6 @@ import UIKit
 import SwiftyJSON
 import KeychainAccess
 
-class Entry {
-    var title :String!
-    var name: String!
-    var date: NSDate!
-    var room_com: String!
-    var room_id: String!
-    var tag: String?
-    var img_url: String!
-    var img:UIImage!
-    var outpage:Bool?
-    var listener:String!
-    var comment_num:String!
-}
-
 class status{
     class func animation(str str:String) {
         let displayWidth: CGFloat = UIScreen.mainScreen().bounds.size.width
