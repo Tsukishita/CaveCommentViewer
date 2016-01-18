@@ -21,7 +21,7 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
     var IconImage:Dictionary<String,UIImage> = Dictionary()
     var Socket: SocketIOClient!
     var json:JSON?
-    var heights:[CGFloat]=[]
+    var heights = [CGFloat]()
     var live_status:Bool!
     var timer :NSTimer?
     let api = CaveAPI()
@@ -37,6 +37,7 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
     @IBOutlet weak var scrollview: UIScrollView!
     @IBOutlet weak var userimg: UIImageView!
     @IBOutlet weak var commimg: UIImageView!
+    @IBOutlet weak var ContentView: UIView!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -88,9 +89,13 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
             socketURL: "ws.cavelis.net",
             options: ["connectParams":["accessKey":self.api.accessKey]])
         
+        Socket.on("ready") { data in
+            print("コメントサーバーに接続")
+            status.animation(str:"コメントサーバーに接続しました")
+            UIApplication.sharedApplication().networkActivityIndicatorVisible = false
+        }
         
         Socket.on("connect") { data in
-            status.animation(str:"コメントサーバーに接続しました")
             print("コメントサーバーに接続しました")
             self.Socket.emit("get", [
                 "devkey":self.api.accessKey,
@@ -98,7 +103,6 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
         }
         
         Socket.on("get") {data, ack in
-            UIApplication.sharedApplication().networkActivityIndicatorVisible = false
             self.json = JSON(data)[0]["comments"]
             
             self.labelHeight(res:{
@@ -271,8 +275,6 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
             status.animation(str: "\(num)番さんのIDが表示指定解除されました")
         }
         
-        UIApplication.sharedApplication().networkActivityIndicatorVisible = true
-        
         Socket.connect()
         self.scrollview.contentInset=UIEdgeInsetsMake(0,0,0,0);
         
@@ -304,9 +306,8 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
         let userInfo = notification.userInfo!
         let keyboardScreenEndFrame = (userInfo[UIKeyboardFrameEndUserInfoKey] as! NSValue).CGRectValue()
         let myBoundSize: CGSize = UIScreen.mainScreen().bounds.size
-        let txtLimit = textField.frame.origin.y + textField.frame.height + 112
+        let txtLimit = ContentView.frame.origin.y + textField.frame.height + 144
         let kbdLimit = myBoundSize.height - keyboardScreenEndFrame.size.height
-        
         if txtLimit >= kbdLimit {
             scrollview.contentOffset.y = txtLimit - kbdLimit
         }
@@ -360,9 +361,9 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
     // 行数
     func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         if self.json != nil {
-        return self.json!.count
-    }else{
-        return 0
+            return self.json!.count
+        }else{
+            return 0
         }
     }
     
@@ -391,19 +392,19 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
         
         if IconImage[comment["name"].stringValue] == nil{
             if imgURL != "http:"{
-            let url = NSURL(string:imgURL.stringByAddingPercentEncodingWithAllowedCharacters(NSCharacterSet.URLQueryAllowedCharacterSet())!)
-            let request = NSMutableURLRequest(URL: url!)
-            let task : NSURLSessionDataTask = NSURLSession.sharedSession().dataTaskWithRequest(request) { (data, response, error) -> Void in
-                if error == nil {
-                dispatch_async(dispatch_get_main_queue()) { () in
-                    self.IconImage[comment["name"].stringValue] = UIImage(data:data!)
-                    cell.imgUser.image = UIImage(data:data!)
+                let url = NSURL(string:imgURL.stringByAddingPercentEncodingWithAllowedCharacters(NSCharacterSet.URLQueryAllowedCharacterSet())!)
+                let request = NSMutableURLRequest(URL: url!)
+                let task : NSURLSessionDataTask = NSURLSession.sharedSession().dataTaskWithRequest(request) { (data, response, error) -> Void in
+                    if error == nil {
+                        dispatch_async(dispatch_get_main_queue()) { () in
+                            self.IconImage[comment["name"].stringValue] = UIImage(data:data!)
+                            cell.imgUser.image = UIImage(data:data!)
+                        }
+                    }
                 }
-                }
-            }
-            task.resume()
-        }else{
-            cell.imgUser.image = nil
+                task.resume()
+            }else{
+                cell.imgUser.image = nil
             }
         }else{
             cell.imgUser.image = IconImage[comment["name"].stringValue]
@@ -428,94 +429,88 @@ class CommentView: UIViewController, UITableViewDelegate, UITableViewDataSource,
     
     func rowButtonAction(sender : UILongPressGestureRecognizer) {
         if sender.state == UIGestureRecognizerState.Began {
-        if self.api.auth_user != room_author{
-            return
-        }
-        let indexPath = tableview.indexPathForRowAtPoint(sender.locationInView(tableview))
-        if indexPath == nil {
-            return
-        }
-        let comment = json![indexPath!.row]
-        let ban_str = comment["is_ban"] ? "BAN指定解除" : "BAN指定"
-        let hiddenCom_str = comment["is_hide"] ? "コメント再表示" : "コメント非表示"
-        let alertController = UIAlertController(title: nil, message: nil, preferredStyle: .ActionSheet)
-        let ban_user = UIAlertAction(title: ban_str, style: .Default) {
-            action in
-            self.Socket.emit((comment["is_ban"] ?  "unban" : "ban"), [
-                "devkey":self.api.devKey,
-                "apikey":self.api.apiKey,
-                "roomId":self.roomid!,
-                "commentNumber":indexPath!.row+1])
+            if self.api.auth_user != room_author{
+                return
+            }
+            let indexPath = tableview.indexPathForRowAtPoint(sender.locationInView(tableview))
+            if indexPath == nil {
+                return
+            }
+            let comment = json![indexPath!.row]
+            let ban_str = comment["is_ban"] ? "BAN指定解除" : "BAN指定"
+            let hiddenCom_str = comment["is_hide"] ? "コメント再表示" : "コメント非表示"
+            let alertController = UIAlertController(title: nil, message: nil, preferredStyle: .ActionSheet)
+            let ban_user = UIAlertAction(title: ban_str, style: .Default) {
+                action in
+                self.Socket.emit((comment["is_ban"] ?  "unban" : "ban"), [
+                    "devkey":self.api.devKey,
+                    "apikey":self.api.apiKey,
+                    "roomId":self.roomid!,
+                    "commentNumber":indexPath!.row+1])
+                
+            }
+            let unhiddenID = UIAlertAction(title: "ID表示", style: .Default) {
+                action in
+                self.Socket.emit("show_id", [
+                    "devkey":self.api.devKey,
+                    "apikey":self.api.apiKey,
+                    "roomId":self.roomid!,
+                    "commentNumber":indexPath!.row+1])
+            }
+            let hiddenID = UIAlertAction(title: "ID非表示", style: .Default) {
+                action in
+                self.Socket.emit("hide_id", [
+                    "devkey":self.api.devKey,
+                    "apikey":self.api.apiKey,
+                    "roomId":self.roomid!,
+                    "commentNumber":indexPath!.row+1])
+            }
             
-        }
-        let unhiddenID = UIAlertAction(title: "ID表示", style: .Default) {
-            action in
-            self.Socket.emit("show_id", [
-                "devkey":self.api.devKey,
-                "apikey":self.api.apiKey,
-                "roomId":self.roomid!,
-                "commentNumber":indexPath!.row+1])
-        }
-        let hiddenID = UIAlertAction(title: "ID非表示", style: .Default) {
-            action in
-            self.Socket.emit("hide_id", [
-                "devkey":self.api.devKey,
-                "apikey":self.api.apiKey,
-                "roomId":self.roomid!,
-                "commentNumber":indexPath!.row+1])
-        }
-        
-        let hiddenCom = UIAlertAction(title: hiddenCom_str, style: .Default) {
-            action in
-            self.Socket.emit((comment["is_hide"] ?  "show_comment" : "hide_comment"), [
-                "devkey":self.api.devKey,
-                "apikey":self.api.apiKey,
-                "roomId":self.roomid!,
-                "commentNumber":indexPath!.row+1])
-        }
-        let Cancel = UIAlertAction(title: "キャンセル", style: .Cancel) {
-            action in
-        }
-        alertController.addAction(ban_user)
-        alertController.addAction(hiddenID)
-        alertController.addAction(unhiddenID)
-        alertController.addAction(hiddenCom)
-        alertController.addAction(Cancel)
-        presentViewController(alertController, animated: true, completion: nil)
+            let hiddenCom = UIAlertAction(title: hiddenCom_str, style: .Default) {
+                action in
+                self.Socket.emit((comment["is_hide"] ?  "show_comment" : "hide_comment"), [
+                    "devkey":self.api.devKey,
+                    "apikey":self.api.apiKey,
+                    "roomId":self.roomid!,
+                    "commentNumber":indexPath!.row+1])
+            }
+            let Cancel = UIAlertAction(title: "キャンセル", style: .Cancel) {
+                action in
+            }
+            alertController.addAction(ban_user)
+            alertController.addAction(hiddenID)
+            alertController.addAction(unhiddenID)
+            alertController.addAction(hiddenCom)
+            alertController.addAction(Cancel)
+            presentViewController(alertController, animated: true, completion: nil)
         }
     }
     
     @IBAction func Connect(sender: AnyObject) {
         if textField.text != ""{
-        UIApplication.sharedApplication().networkActivityIndicatorVisible = true
-        self.textField.enabled = false
-        let str:[String:String]!
-        if self.api.apiKey != "" && self.nameField.text == self.api.auth_user{
-            str = [
-            "devkey":self.api.devKey,
-            "roomId":self.roomid!,
-            "message":self.textField.text!,
-            "name":self.nameField.text!,
-            "apikey":self.api.apiKey
-            ]
-        }else{
-            str = [
-            "devkey":self.api.devKey,
-            "roomId":self.roomid!,
-            "message":self.textField.text!,
-            "name":self.nameField.text!,
+            UIApplication.sharedApplication().networkActivityIndicatorVisible = true
+            self.textField.enabled = false
+            var str:[String:String] = [
+                "devkey":self.api.devKey,
+                "roomId":self.roomid!,
+                "message":self.textField.text!,
+                "name":self.nameField.text!,
+                "apikey":self.api.apiKey
             ]
             
-        }
-        self.overlay.hidden = false
-        self.Socket.emit("post", str)
+            if self.api.apiKey != "" && self.nameField.text == self.api.auth_user{
+                str["apikey"] = self.api.apiKey
+            }
+            self.view.bringSubviewToFront(overlay)
+            self.overlay.hidden = false
+            self.Socket.emit("post", str)
         }
     }
     
     @IBAction func closeModal(sender: UIBarButtonItem) {
         self.Socket.emit("leave", [
-        "devkey":self.api.devKey,
-        "roomId":self.roomid!])
+            "devkey":self.api.devKey,
+            "roomId":self.roomid!])
         self.Socket.disconnect()
         self.dismissViewControllerAnimated(true, completion: nil)
         UIApplication.sharedApplication().networkActivityIndicatorVisible = false
