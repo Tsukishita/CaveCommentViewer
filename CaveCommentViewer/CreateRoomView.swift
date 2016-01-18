@@ -43,9 +43,11 @@ UITableViewDataSource,UITableViewDelegate,CreateRoomDetailViewDelegate,UIBarPosi
     var ThumbImage:Dictionary<Int,UIImage> = Dictionary()
     
     var Genre_slot = 0
+    var PresetSlot = -1
+    
     var ComID:Bool = false
-    var Name:Bool  = false
-    var Anony:Bool = false
+    var AuthCom:Bool  = false
+    var AnonyCom:Bool = false
     var TestMode:Bool = false
     var txtActiveField = UITextField()
     
@@ -82,9 +84,6 @@ UITableViewDataSource,UITableViewDelegate,CreateRoomDetailViewDelegate,UIBarPosi
         NameSw.addTarget(self, action: "onClickMySwicth:", forControlEvents: UIControlEvents.ValueChanged)
         TestModeSw.addTarget(self, action: "onClickMySwicth:", forControlEvents: UIControlEvents.ValueChanged)
         
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: Selector("keyboardWillShow:"), name:UIKeyboardWillShowNotification, object: nil);
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: Selector("keyboardWillHide:"), name:UIKeyboardWillHideNotification, object: nil);
-        
         let str = "http://gae.cavelis.net/user/\(self.Api.auth_user)"
         let url:NSURL! = NSURL(
             string:str.stringByAddingPercentEncodingWithAllowedCharacters(NSCharacterSet.URLQueryAllowedCharacterSet())!
@@ -105,6 +104,16 @@ UITableViewDataSource,UITableViewDelegate,CreateRoomDetailViewDelegate,UIBarPosi
     
     //UIbuttonAction
     @IBAction func CreateRoom(sender: AnyObject) {
+        
+        if titleText.text == ""{
+            let Date:NSDate = NSDate()
+            let DateFormatter: NSDateFormatter = NSDateFormatter()
+            DateFormatter.locale     = NSLocale(localeIdentifier: "ja")
+            DateFormatter.dateFormat = "yyyy'/'MM'/'dd' 'HH':'mm':'ss"
+            titleText.text =  DateFormatter.stringFromDate(Date)
+            print(DateFormatter.stringFromDate(Date))
+        }
+        
         var params:String = String()
         params += "devkey=\(self.Api.devKey)&"
         params += "title=\(self.titleText.text!)&"
@@ -112,12 +121,71 @@ UITableViewDataSource,UITableViewDelegate,CreateRoomDetailViewDelegate,UIBarPosi
         params += "description=\(self.detailText.text!)&"
         params += "tag=\(self.tagText.text!)&"
         params += "id_visible=\(self.ComID)&"
-        params += "anonymous_only=\(self.Anony)&"
-        params += "login_user=\(self.Name)&"
+        params += "anonymous_only=\(self.AnonyCom)&"
+        params += "login_user=\(self.AuthCom)&"
         params += "thumbnail_slot=\(self.Thumb_slot)&"
         params += "test_mode=\(self.TestMode)"
         
         self.delegate.createRoom(params: params)
+    }
+    
+    @IBAction func savePreset(sender: AnyObject) {
+        //ダイアログでプリセット名入力
+        if titleText.text == "" {
+            let cancelAction = UIAlertAction(title: "閉じる", style: .Default) {action in}
+            let alertController: UIAlertController = UIAlertController(title: "タイトルは必須です", message: "", preferredStyle: .Alert)
+            alertController.addAction(cancelAction)
+            self.presentViewController(alertController, animated: true, completion: nil)
+        }else{
+            let alertController = UIAlertController(title: "プリセットの保存", message: "", preferredStyle: .Alert)
+            let SaveAction = UIAlertAction(title: "保存", style: .Default) {
+                action in
+                self.view.endEditing(true)
+                let textField:UITextField =  alertController.textFields![0]
+                
+                let pre:Preset  = Preset()
+                pre.PresetName = textField.text!
+                pre.Title = self.titleText.text
+                pre.Comment = self.detailText.text
+                pre.Gunre = self.Genre_slot
+                pre.Tag = self.tagText.text
+                pre.ThumbsSlot = self.Thumb_slot
+                
+                pre.ShowId =  self.ComID
+                pre.AnonyCom = self.AnonyCom
+                pre.AuthCom = self.AuthCom
+                
+                if textField.text! == ""{
+                    let cancelAction = UIAlertAction(title: "閉じる", style: .Default) {action in}
+                    let alertController: UIAlertController = UIAlertController(title: "保存失敗", message: "プリセット名が入力されていません", preferredStyle: .Alert)
+                    alertController.addAction(cancelAction)
+                    self.presentViewController(alertController, animated: true, completion: nil)
+                }
+                
+                if self.Api.savePreset(preset: pre) == true{
+                    status.animation(str: "保存が完了しました")
+                    self.PresetSlot = self.Api.presets.count - 1
+                    self.PresetTable.reloadData()
+                }else{
+                    let cancelAction = UIAlertAction(title: "閉じる", style: .Default) {action in}
+                    let alertController: UIAlertController = UIAlertController(title: "保存失敗", message: "同じ名前のプリセットが既に存在します", preferredStyle: .Alert)
+                    alertController.addAction(cancelAction)
+                    self.presentViewController(alertController, animated: true, completion: nil)
+                }
+                
+            }
+            let cancelAction = UIAlertAction(title: "キャンセル", style: .Cancel) {
+                action in
+                self.view.endEditing(true)
+            }
+            alertController.addTextFieldWithConfigurationHandler({(textField:UITextField!) -> Void in
+                textField.placeholder = "プリセット名"
+            })
+            
+            alertController.addAction(SaveAction)
+            alertController.addAction(cancelAction)
+            self.presentViewController(alertController, animated: true, completion: nil)
+        }
     }
     
     @IBAction func CaveRuleButton(sender: AnyObject) {
@@ -132,22 +200,6 @@ UITableViewDataSource,UITableViewDelegate,CreateRoomDetailViewDelegate,UIBarPosi
     func textFieldShouldBeginEditing(textField: UITextField) -> Bool {
         txtActiveField = textField
         return true
-    }
-    
-    func keyboardWillShow(notification: NSNotification){
-        let userInfo = notification.userInfo!
-        let keyboardScreenEndFrame = (userInfo[UIKeyboardFrameEndUserInfoKey] as! NSValue).CGRectValue()
-        let myBoundSize: CGSize = UIScreen.mainScreen().bounds.size
-        let txtLimit = txtActiveField.frame.origin.y + txtActiveField.frame.height + 72
-        let kbdLimit = myBoundSize.height - keyboardScreenEndFrame.size.height
-        
-        if txtLimit >= kbdLimit {
-            scrollview.contentOffset.y = txtLimit - kbdLimit
-        }
-    }
-    
-    func keyboardWillHide(notification: NSNotification){
-        self.scrollview.contentOffset.y = 0
     }
     
     //UITableDelegate
@@ -167,7 +219,13 @@ UITableViewDataSource,UITableViewDelegate,CreateRoomDetailViewDelegate,UIBarPosi
             return cell
         case 2:
             let cell: UITableViewCell = UITableViewCell(style: UITableViewCellStyle.Subtitle, reuseIdentifier: "Cell")
-            cell.textLabel!.text = "新規(デフォルト)"
+            
+            if PresetSlot == -1{
+                cell.textLabel!.text = "新規(デフォルト)"
+            }else{
+                cell.textLabel!.text = Api.presets[PresetSlot].PresetName
+            }
+            
             return cell
         default:
             let cell: UITableViewCell = UITableViewCell(style: UITableViewCellStyle.Subtitle, reuseIdentifier: "Cell")
@@ -191,10 +249,11 @@ UITableViewDataSource,UITableViewDelegate,CreateRoomDetailViewDelegate,UIBarPosi
             return 44
         case 1:
             return 88
-        default:
+        case 2:
+            return 44
+        default :
             return 44
         }
-        
     }
     
     //DetailDeglegate
@@ -207,9 +266,37 @@ UITableViewDataSource,UITableViewDelegate,CreateRoomDetailViewDelegate,UIBarPosi
                 tagText.text = "\(tag[Genre_slot]) "
             }
             self.genreTable.reloadData()
-        }else{
+        }else if Tag == 1{
             self.Thumb_slot = Row
             self.thubmTable.reloadData()
+        }else{
+            if Row != -1{
+                self.PresetSlot = Row
+                let selectPreset = Api.presets[Row]
+                
+                self.titleText.text = selectPreset.Title
+                self.detailText.text = selectPreset.Comment
+                self.Genre_slot = selectPreset.Gunre
+                self.tagText.text = selectPreset.Tag
+                self.Thumb_slot = selectPreset.ThumbsSlot
+                
+                self.ComID = selectPreset.ShowId
+                self.AnonyCom = selectPreset.AnonyCom
+                self.AuthCom = selectPreset.AuthCom
+                
+                self.ComIDSw.on = selectPreset.ShowId
+                self.AuthSw.on = selectPreset.AnonyCom
+                self.NameSw.on = selectPreset.AuthCom
+                
+                self.genreTable.reloadData()
+                self.thubmTable.reloadData()
+                self.PresetTable.reloadData()
+            }else{
+                self.PresetSlot = Row
+                self.genreTable.reloadData()
+                self.thubmTable.reloadData()
+                self.PresetTable.reloadData()
+            }
         }
         self.navigationController?.popViewControllerAnimated(true)
     }
@@ -259,8 +346,8 @@ UITableViewDataSource,UITableViewDelegate,CreateRoomDetailViewDelegate,UIBarPosi
         if sender.on {
             switch sender.tag{
             case 0: ComID = true
-            case 1: Name = true
-            case 2: Anony = true
+            case 1: AuthCom = true
+            case 2: AnonyCom = true
             case 3: TestMode = true
             default:break
             }
@@ -268,8 +355,8 @@ UITableViewDataSource,UITableViewDelegate,CreateRoomDetailViewDelegate,UIBarPosi
         else {
             switch sender.tag{
             case 0: ComID = false
-            case 1: Name = false
-            case 2: Anony = false
+            case 1: AuthCom = false
+            case 2: AnonyCom = false
             case 3: TestMode = false
             default:break
             }
