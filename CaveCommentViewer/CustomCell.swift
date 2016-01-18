@@ -26,6 +26,23 @@ class CustomCell: UITableViewCell {
 
 }
 
+class UserCell: UITableViewCell {
+    
+    @IBOutlet weak var labelTitle: UILabel!
+    @IBOutlet weak var labelAuthor: UILabel!
+    @IBOutlet weak var imgUser: UIImageView!
+    @IBOutlet weak var labelTIme: UILabel!
+    @IBOutlet weak var labelAtTime: UILabel!
+    
+    @IBOutlet weak var CellLamp: UIView!
+    @IBOutlet weak var StreamLabel: UILabel!
+    
+    override func setSelected(selected: Bool, animated: Bool) {
+        super.setSelected(selected, animated: animated)
+    }
+    
+}
+
 class CommentCell: UITableViewCell {
     
     @IBOutlet weak var labelNum: UILabel!
